@@ -236,6 +236,44 @@ export class UserRepository {
     return user;
   }
 
+  public static async reactivateAccount(
+    userId: string,
+    data: { username: string; displayName: string; avatarUrl?: string }
+  ): Promise<IUser> {
+    const normalizedUsername = data.username.toLowerCase().trim();
+
+    if (isDatabaseConnected()) {
+      const updated = await UserModel.findByIdAndUpdate(
+        userId,
+        {
+          status: 'active',
+          username: normalizedUsername,
+          displayName: data.displayName,
+          avatarUrl: data.avatarUrl,
+          avatarPublicId: undefined,
+          publicKeyBundle: null,
+          lastActiveAt: new Date(),
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+      if (!updated) throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
+      return updated;
+    }
+
+    const user = inMemUsers.get(userId);
+    if (!user) throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
+    user.status = 'active';
+    user.username = normalizedUsername;
+    user.displayName = data.displayName;
+    user.avatarUrl = data.avatarUrl;
+    user.avatarPublicId = undefined;
+    user.publicKeyBundle = undefined;
+    user.lastActiveAt = new Date();
+    user.updatedAt = new Date();
+    return user;
+  }
+
   public static async searchUsers(query: string, limit = 15): Promise<PublicUserProfile[]> {
     const clean = query.trim().toLowerCase();
     if (!clean) return [];

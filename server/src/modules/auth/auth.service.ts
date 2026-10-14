@@ -63,6 +63,16 @@ export class AuthService {
         displayName: verifiedGoogleUser.name,
         avatarUrl: verifiedGoogleUser.picture,
       });
+    } else if (user.status === 'deleted') {
+      // User previously deleted their account and is re-registering with Google
+      const candidateBase = verifiedGoogleUser.name || verifiedGoogleUser.email.split('@')[0] || 'user';
+      const uniqueUsername = await UsernameHelper.generateUniqueUsername(candidateBase);
+
+      user = await UserRepository.reactivateAccount(user._id.toString(), {
+        username: uniqueUsername,
+        displayName: verifiedGoogleUser.name || 'User',
+        avatarUrl: verifiedGoogleUser.picture,
+      });
     } else {
       // Update last active cleanly
       user.lastActiveAt = new Date();

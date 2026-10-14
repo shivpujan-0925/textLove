@@ -264,4 +264,51 @@ describe('Google Authentication & Session Management', () => {
     expect(afterLogoutB.status).toBe(200);
     expect(afterLogoutB.body.user.id).toBe(userB.id);
   });
+
+  it('successfully reactivates and signs in an account that was previously deleted', async () => {
+    // 1. Initial login for user
+    const urlRes1 = await request(app).get('/api/v1/auth/google/url');
+    const stateCookie1 = urlRes1.headers['set-cookie']![0]!;
+    const state1 = urlRes1.body.state;
+
+    const idToken = 'mock_google_token_:reactivate_user_101:reactivate%40example.com:Reactivated%20User';
+    const callback1 = await request(app)
+      .post('/api/v1/auth/google/callback')
+      .set('Cookie', [stateCookie1])
+      .send({ idToken, state: state1 });
+
+    expect(callback1.status).toBe(200);
+    const initialUser = callback1.body.user;
+    const initialSessionCookie = callback1.headers['set-cookie']!.find((c: string) => c.includes('textlove_session'))!;
+
+    // 2. Delete the user account
+    await UserRepository.deleteAccount(initialUser.id);
+
+    // Old session should now be rejected as deleted
+    const meAfterDelete = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Cookie', [initialSessionCookie]);
+    expect([401, 403]).toContain(meAfterDelete.status);
+
+    // 3. User signs in again using the same Google account
+    const urlRes2 = await request(app).get('/api/v1/auth/google/url');
+    const stateCookie2 = urlRes2.headers['set-cookie']![0]!;
+    const state2 = urlRes2.body.state;
+    const callback2 = await request(app)
+      .post('/api/v1/auth/google/callback')
+      .set('Cookie', [stateCookie2])
+      .send({ idToken, state: state2 });
+
+    expect(callback2.status).toBe(200);
+    expect(callback2.body.user.username).not.toContain('_deleted_');
+    expect(callback2.body.user.displayName).toBe('Reactivated User');
+
+    // 4. New session must be valid and authenticated
+    const newSessionCookie = callback2.headers['set-cookie']!.find((c: string) => c.includes('textlove_session'))!;
+    const meAfterReactivate = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Cookie', [newSessionCookie]);
+    expect(meAfterReactivate.status).toBe(200);
+    expect(meAfterReactivate.body.user.displayName).toBe('Reactivated User');
+  });
 });
