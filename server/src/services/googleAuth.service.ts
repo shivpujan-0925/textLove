@@ -33,7 +33,8 @@ export class GoogleAuthService {
    * with the Google account chooser.
    */
   public static getAuthorizationUrl(state: string, codeChallenge: string): string {
-    const redirectUri = `${env.CORS_ORIGIN}/auth/callback`;
+    const baseOrigin = env.CORS_ORIGIN.split(',')[0]?.trim().replace(/\/+$/, '') || 'http://localhost:5173';
+    const redirectUri = `${baseOrigin}/auth/callback`;
 
     return client.generateAuthUrl({
       access_type: 'offline',
@@ -59,7 +60,8 @@ export class GoogleAuthService {
     }
 
     try {
-      const redirectUri = `${env.CORS_ORIGIN}/auth/callback`;
+      const baseOrigin = env.CORS_ORIGIN.split(',')[0]?.trim().replace(/\/+$/, '') || 'http://localhost:5173';
+      const redirectUri = `${baseOrigin}/auth/callback`;
       const { tokens } = await client.getToken({
         code,
         codeVerifier,
