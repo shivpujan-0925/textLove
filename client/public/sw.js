@@ -66,26 +66,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // B. STRICT PRIVACY EXCLUSION: Never intercept or cache API or WebSocket requests
+  // B. STRICT PRIVACY EXCLUSION: Never intercept or cache API, Auth redirects, or WebSocket requests
   if (
     url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/auth/') ||
+    url.pathname.includes('callback') ||
     url.pathname.startsWith('/socket.io/') ||
     url.protocol === 'ws:' ||
     url.protocol === 'wss:'
   ) {
-    // Let all API and WebSocket requests pass straight through to network
+    // Let all API, Auth, and WebSocket requests pass straight through to network
     return;
   }
 
   // C. Navigation Requests (HTML App Shell)
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() =>
-        caches.match('/index.html').then((cached) => {
-          if (cached) return cached;
-          return caches.match('/');
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 404) {
+            return caches.match('/index.html').then((cached) => cached || response);
+          }
+          return response;
         })
-      )
+        .catch(() =>
+          caches.match('/index.html').then((cached) => {
+            if (cached) return cached;
+            return caches.match('/');
+          })
+        )
     );
     return;
   }
