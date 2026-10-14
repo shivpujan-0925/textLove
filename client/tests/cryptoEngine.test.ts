@@ -307,4 +307,40 @@ describe('textLove Cryptographic Engine (E2EE Foundation)', () => {
       );
     }).toThrow(/INVALID_PREKEY_SIGNATURE/i);
   });
+
+  describe('KeyStore Secure Vault & LocalStorage Anti-Exfiltration', () => {
+    it('does not store raw private keys in localStorage when keys are ensured', () => {
+      const keyStore = KeyStore.getInstance();
+      keyStore.initForUser('alice_vault_user');
+      keyStore.ensureKeys();
+
+      // Check localStorage for any leaked keys
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        expect(key?.startsWith('textlove_e2ee_')).toBe(false);
+      }
+    });
+
+    it('automatically migrates legacy localStorage keys into secure vault and scrubs localStorage', async () => {
+      const mockLegacyIdentity = { publicKey: 'id_pub_123', privateKey: 'id_priv_secret' };
+      const mockLegacyPreKey = { publicKey: 'pre_pub_456', privateKey: 'pre_priv_secret' };
+      const mockSig = 'sig_789';
+
+      localStorage.setItem('textlove_e2ee_migrated_user_identity', JSON.stringify(mockLegacyIdentity));
+      localStorage.setItem('textlove_e2ee_migrated_user_prekey', JSON.stringify(mockLegacyPreKey));
+      localStorage.setItem('textlove_e2ee_migrated_user_signature', mockSig);
+
+      const keyStore = KeyStore.getInstance();
+      await keyStore.initForUserAsync('migrated_user');
+
+      const bundle = keyStore.getPublicBundle();
+      expect(bundle.identityPublicKey).toBe('id_pub_123');
+      expect(bundle.signedPreKey).toBe('pre_pub_456');
+
+      // LocalStorage must be scrubbed clean
+      expect(localStorage.getItem('textlove_e2ee_migrated_user_identity')).toBeNull();
+      expect(localStorage.getItem('textlove_e2ee_migrated_user_prekey')).toBeNull();
+      expect(localStorage.getItem('textlove_e2ee_migrated_user_signature')).toBeNull();
+    });
+  });
 });

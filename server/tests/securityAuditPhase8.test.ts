@@ -191,10 +191,13 @@ describe('Phase 8: Security Audit & Hardening Verification', () => {
     await new Promise<void>((r) => client.on('connect', () => r()));
 
     let rateLimitHit = false;
-    client.on('msg:error', (err: { code: string }) => {
-      if (err.code === 'RATE_LIMIT_EXCEEDED') {
-        rateLimitHit = true;
-      }
+    const rateLimitPromise = new Promise<void>((resolve) => {
+      client.on('msg:error', (err: { code: string }) => {
+        if (err.code === 'RATE_LIMIT_EXCEEDED') {
+          rateLimitHit = true;
+          resolve();
+        }
+      });
     });
 
     // Emit 45 messages rapidly
@@ -208,7 +211,10 @@ describe('Phase 8: Security Audit & Hardening Verification', () => {
       });
     }
 
-    await new Promise((r) => setTimeout(r, 200));
+    await Promise.race([
+      rateLimitPromise,
+      new Promise((r) => setTimeout(r, 2000)),
+    ]);
     expect(rateLimitHit).toBe(true);
 
     client.disconnect();

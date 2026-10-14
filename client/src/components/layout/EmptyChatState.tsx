@@ -1,21 +1,21 @@
 import React from 'react';
-import { Heart, Zap, Trash2, Clock, Lock } from 'lucide-react';
-import { Badge } from '../ui/Badge';
+import { Zap, Trash2, Clock, Lock, ShieldCheck } from 'lucide-react';
+import { BrandLogo } from '../ui/BrandLogo';
 
 export const EmptyChatState: React.FC = () => {
   return (
     <div className="flex-1 h-full flex flex-col items-center justify-center p-6 text-center select-none bg-background">
       <div className="max-w-md flex flex-col items-center">
-        {/* Glowing Logo Heart Icon */}
-        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-primary to-accent-rose flex items-center justify-center shadow-xl shadow-primary/20 mb-6">
-          <Heart className="w-8 h-8 text-white fill-white/20" />
+        {/* Production Brand Logo */}
+        <div className="mb-6">
+          <BrandLogo size="xl" />
         </div>
 
-        <h2 className="text-xl font-bold tracking-tight text-foreground">
-          Welcome to <span className="text-primary">textLove</span>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground font-brand">
+          Welcome to <span className="font-semibold">text</span><span className="font-extrabold bg-gradient-to-r from-primary to-accent-rose bg-clip-text text-transparent">Love</span>
         </h2>
         <p className="text-xs text-foreground-muted mt-2 leading-relaxed max-w-sm">
-          A minimalist, live-only, privacy-first messaging sanctuary. No databases of messages. No stored histories. Absolute discretion.
+          A minimalist, live-only, privacy-first messaging sanctuary. No message databases. No stored histories. Absolute discretion.
         </p>
 
         {/* Feature Grid */}
@@ -62,9 +62,10 @@ export const EmptyChatState: React.FC = () => {
         </div>
 
         <div className="mt-8 flex items-center gap-2">
-          <Badge variant="purple" className="text-xs font-mono">
-            Zero Server Retention Guaranteed
-          </Badge>
+          <div className="px-3.5 py-1.5 rounded-full glass-card text-center text-xs text-foreground-muted flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-accent-emerald flex-shrink-0" />
+            <span>Zero server message retention</span>
+          </div>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Conversation, EphemeralMessage, User } from '../../types';
 import { KeyStore } from '../../crypto/keyStore';
 import { useSocket } from '../../context/useSocket';
+import { usePwa } from '../../context/usePwa';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -55,6 +56,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const initialPeerKeyRef = useRef<string | null>(null);
 
   const { fetchPeerKeyBundle, sendTyping, onTyping, subscribePresence, presenceMap } = useSocket();
+  const { isOnline } = usePwa();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -222,37 +224,37 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     switch (status) {
       case 'PENDING_RELAY':
         return (
-          <span title="Sending live ciphertext...">
+          <span title="Sending...">
             <Clock className="w-3.5 h-3.5 text-foreground-muted animate-spin" />
           </span>
         );
       case 'RELAYED_TO_NETWORK':
         return (
-          <span title="Relayed into peer socket write buffer">
+          <span title="Sent">
             <Check className="w-3.5 h-3.5 text-foreground-muted" />
           </span>
         );
       case 'DELIVERED_TO_PEER':
         return (
-          <span title="Delivered to peer socket">
+          <span title="Delivered">
             <CheckCheck className="w-3.5 h-3.5 text-foreground-muted" />
           </span>
         );
       case 'DECRYPTED_BY_PEER':
         return (
-          <span title="Decrypted by peer (E2EE verified)">
+          <span title="Read">
             <CheckCheck className="w-3.5 h-3.5 text-accent-emerald" />
           </span>
         );
       case 'FAILED_OFFLINE':
         return (
-          <span title="Delivery failed: Recipient is offline">
+          <span title="Recipient offline">
             <AlertCircle className="w-3.5 h-3.5 text-accent-crimson" />
           </span>
         );
       case 'DELIVERY_UNCERTAIN':
         return (
-          <span title="Delivery uncertain due to network interruption">
+          <span title="Delivery uncertain">
             <AlertCircle className="w-3.5 h-3.5 text-accent-amber" />
           </span>
         );
@@ -318,14 +320,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
             <div className="flex items-center gap-2">
               {isPeerOnline ? (
-                <span className="text-[11px] font-medium text-accent-emerald flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-pulse" />
-                  Live Now
+                <span className="text-[11px] font-medium text-accent-emerald flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
+                  Active now
                 </span>
               ) : (
-                <span className="text-[11px] text-accent-crimson flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent-crimson" />
-                  Peer Offline (Messages rejected)
+                <span className="text-[11px] text-foreground-muted flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-foreground-muted/50" />
+                  Offline
                 </span>
               )}
             </div>
@@ -357,7 +359,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               }`}
             />
             <span>{remainingTime}</span>
-            <span className="hidden md:inline text-[10px]">remaining</span>
           </div>
 
           {/* Safety Number Button */}
@@ -430,7 +431,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           <div className="max-w-md px-3.5 py-1.5 rounded-full glass-card text-center text-[11px] text-foreground-muted flex items-center gap-2">
             <Lock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
             <span>
-              End-to-end encrypted. Zero server retention. Disappears on session close.
+              End-to-end encrypted. Zero server retention.
             </span>
           </div>
         </div>
@@ -509,24 +510,26 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           {/* Emoji Picker */}
           <EmojiPicker
             onSelectEmoji={handleSelectEmoji}
-            disabled={!isPeerOnline}
+            disabled={!isPeerOnline || !isOnline}
           />
 
           <Input
             value={inputText}
             onChange={handleInputChange}
             placeholder={
-              isPeerOnline
+              !isOnline
+                ? 'You are offline. Live messaging is disabled (zero message queue policy).'
+                : isPeerOnline
                 ? `Live encrypted message to @${conversation.peer.username}...`
-                : 'Peer is offline. Messages can only be sent when both users are online.'
+                : 'Peer is offline. Live messaging only.'
             }
-            disabled={!isPeerOnline}
+            disabled={!isPeerOnline || !isOnline}
             className="flex-1 h-11"
           />
 
           <Button
             type="submit"
-            disabled={!inputText.trim() || !isPeerOnline}
+            disabled={!inputText.trim() || !isPeerOnline || !isOnline}
             className="h-11 px-5 gap-2"
           >
             <Send className="w-4 h-4" />

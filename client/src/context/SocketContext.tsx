@@ -84,11 +84,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Initialize and manage authenticated socket lifecycle
   useEffect(() => {
     if (!user) {
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
-        setConnectionStatus('disconnected');
-      }
+      setSocket((prev) => {
+        if (prev) prev.disconnect();
+        return null;
+      });
+      setConnectionStatus('disconnected');
       return;
     }
 

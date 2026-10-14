@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { BrandLogo } from '../ui/BrandLogo';
+import { PrivacyPolicyModal } from '../ui/PrivacyPolicyModal';
 import {
-  Heart,
   Zap,
   Lock,
   Clock,
@@ -10,6 +11,7 @@ import {
   Sparkles,
   ServerOff,
   CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -21,6 +23,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onEnterChat,
   onGoogleSignInClick,
 }) => {
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+
   return (
     <div className="min-h-full flex flex-col bg-background selection:bg-primary/20">
       {/* Hero Section */}
@@ -28,7 +32,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         {/* Glow ambient background aura */}
         <div className="absolute top-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-card mb-8">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-card mb-8 select-none">
           <Sparkles className="w-4 h-4 text-primary" />
           <span className="text-xs font-medium text-foreground">
             Zero-Retention Live Communication
@@ -36,7 +40,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground max-w-3xl leading-[1.15]">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-foreground max-w-3xl leading-[1.15] font-display">
           Live conversations that leave{' '}
           <span className="bg-gradient-to-r from-primary via-accent-rose to-primary bg-clip-text text-transparent">
             zero footprint
@@ -162,21 +166,67 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t border-border/60 py-8 px-4 sm:px-6 text-center text-xs text-foreground-muted">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Heart className="w-4 h-4 text-primary fill-primary/20" />
-            <span className="font-semibold text-foreground">textLove</span>
-            <span>— privacy-first real-time messaging</span>
+      {/* Production-Level Footer */}
+      <footer className="mt-auto border-t border-border/60 py-8 px-4 sm:px-6 bg-surface/40">
+        <div className="max-w-6xl mx-auto flex flex-col gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* Brand Logo & Copyright */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+              <BrandLogo size="sm" showText={true} textSize="text-base" />
+              <span className="hidden sm:inline text-border">|</span>
+              <p className="text-xs text-foreground-muted">
+                &copy; {new Date().getFullYear()} textLove Inc. All rights reserved.
+              </p>
+            </div>
+
+            {/* Production Privacy Tag */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-card border border-accent-emerald/30 text-xs shadow-xs select-none">
+              <ShieldCheck className="w-3.5 h-3.5 text-accent-emerald flex-shrink-0" />
+              <span className="font-medium text-foreground">Zero-Retention Privacy Verified</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
+            </div>
+
+            {/* Production Legal & Privacy Policy Links */}
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-foreground-muted">
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(true)}
+                className="hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
+              >
+                Privacy Policy
+              </button>
+              <span>&bull;</span>
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(true)}
+                className="hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
+              >
+                Security Architecture
+              </button>
+              <span>&bull;</span>
+              <button
+                type="button"
+                onClick={() => setIsPrivacyModalOpen(true)}
+                className="hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
+              >
+                Zero-Retention Terms
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span>Ephemeral Live Messaging</span>
-            <span>•</span>
-            <span>Zero Server Message Retention</span>
+
+          <div className="text-center border-t border-border/40 pt-4 text-[11px] text-foreground-muted/80">
+            <span>
+              End-to-end client encrypted. Zero server message databases. Authoritative 30-minute memory auto-expiry.
+            </span>
           </div>
         </div>
       </footer>
+
+      {/* Production Privacy Policy & Security Modal */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
     </div>
   );
 };

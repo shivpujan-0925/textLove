@@ -217,14 +217,14 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
                 onClick={onLiveOAuthRedirect}
                 className="text-[11px] text-foreground-muted hover:text-primary transition-colors underline"
               >
-                Or redirect directly to live Google OAuth endpoint (prompt=select_account)
+                Continue with official Google OAuth
               </button>
             </div>
           )}
 
           <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-foreground-muted">
             <ShieldCheck className="w-3.5 h-3.5 text-accent-emerald" />
-            <span>Secure OAuth PKCE state validation and HttpOnly session</span>
+            <span>Secure authentication with encrypted session</span>
           </div>
         </div>
       </div>

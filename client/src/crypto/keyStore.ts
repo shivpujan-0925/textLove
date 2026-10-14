@@ -13,6 +13,12 @@ import {
   SessionState,
   EncryptedMessagePayload,
 } from './types';
+import {
+  saveKeysToSecureVault,
+  loadKeysFromSecureVault,
+  purgeFromSecureVault,
+  clearMemoryVault,
+} from './indexedDbKeyStore';
 
 export class KeyStore {
   private static instance: KeyStore | null = null;
@@ -45,7 +51,7 @@ export class KeyStore {
     const username = rawUsername.toLowerCase().trim();
     if (this.currentUsername === username && this.identityKeys) return;
 
-    if (this.currentUsername) {
+    if (this.currentUsername && this.identityKeys) {
       this.saveToStorage();
     }
 
@@ -59,20 +65,27 @@ export class KeyStore {
     this.loadFromStorage();
   }
 
-  private getStorageKey(key: string): string {
-    return this.currentUsername
-      ? `textlove_e2ee_${this.currentUsername}_${key}`
-      : `textlove_e2ee_${key}`;
+  /**
+   * Async initialization ensuring IndexedDB hydration completes
+   */
+  public async initForUserAsync(rawUsername: string): Promise<void> {
+    this.initForUser(rawUsername);
+    const stored = await loadKeysFromSecureVault(this.currentUsername);
+    if (stored) {
+      this.identityKeys = stored.identityKeys;
+      this.signedPreKey = stored.signedPreKey;
+      this.preKeySignature = stored.preKeySignature;
+    }
   }
 
   /**
    * Reset keystore (for testing or user logout)
    */
   public reset(): void {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(this.getStorageKey('identity'));
-      localStorage.removeItem(this.getStorageKey('prekey'));
-      localStorage.removeItem(this.getStorageKey('signature'));
+    if (this.currentUsername) {
+      purgeFromSecureVault(this.currentUsername).catch(() => {});
+    } else {
+      clearMemoryVault();
     }
     this.currentUsername = '';
     this.identityKeys = null;
@@ -242,36 +255,23 @@ export class KeyStore {
   }
 
   private saveToStorage(): void {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      if (this.identityKeys) {
-        localStorage.setItem(this.getStorageKey('identity'), JSON.stringify(this.identityKeys));
-      }
-      if (this.signedPreKey) {
-        localStorage.setItem(this.getStorageKey('prekey'), JSON.stringify(this.signedPreKey));
-      }
-      if (this.preKeySignature) {
-        localStorage.setItem(this.getStorageKey('signature'), this.preKeySignature);
-      }
-    } catch {
-      // Graceful fallback if storage quota exceeded or disabled
-    }
+    if (!this.identityKeys || !this.signedPreKey || !this.preKeySignature) return;
+    saveKeysToSecureVault(this.currentUsername, {
+      identityKeys: this.identityKeys,
+      signedPreKey: this.signedPreKey,
+      preKeySignature: this.preKeySignature,
+    }).catch(() => {});
   }
 
   private loadFromStorage(): void {
-    if (typeof localStorage === 'undefined') return;
-    try {
-      const idRaw = localStorage.getItem(this.getStorageKey('identity'));
-      const preRaw = localStorage.getItem(this.getStorageKey('prekey'));
-      const sigRaw = localStorage.getItem(this.getStorageKey('signature'));
-
-      if (idRaw && preRaw && sigRaw) {
-        this.identityKeys = JSON.parse(idRaw);
-        this.signedPreKey = JSON.parse(preRaw);
-        this.preKeySignature = sigRaw;
-      }
-    } catch {
-      // In-memory fallback
-    }
+    loadKeysFromSecureVault(this.currentUsername)
+      .then((stored) => {
+        if (stored) {
+          this.identityKeys = stored.identityKeys;
+          this.signedPreKey = stored.signedPreKey;
+          this.preKeySignature = stored.preKeySignature;
+        }
+      })
+      .catch(() => {});
   }
 }

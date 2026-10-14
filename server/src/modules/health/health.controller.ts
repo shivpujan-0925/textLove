@@ -1,11 +1,15 @@
 import { Request, Response } from 'express';
 import { env } from '../../config/env.js';
+import { isDatabaseConnected } from '../../config/db.js';
+import { connectionRegistry } from '../../socket/connectionRegistry.js';
 
 const startTime = Date.now();
 
 export const getHealth = (_req: Request, res: Response): void => {
   const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
   const memoryUsage = process.memoryUsage();
+  const dbConnected = isDatabaseConnected();
+  const connStats = connectionRegistry.getStats();
 
   res.status(200).json({
     status: 'healthy',
@@ -14,6 +18,11 @@ export const getHealth = (_req: Request, res: Response): void => {
     environment: env.NODE_ENV,
     uptimeSeconds,
     timestamp: new Date().toISOString(),
+    metrics: {
+      databaseConnected: dbConnected,
+      activeConnections: connStats.totalSockets,
+      activeUsers: connStats.activeUsers,
+    },
     system: {
       nodeVersion: process.version,
       memory: {
@@ -30,3 +39,4 @@ export const getHealth = (_req: Request, res: Response): void => {
     },
   });
 };
+

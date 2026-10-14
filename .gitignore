@@ -1,22 +1,47 @@
+# Documentation (Internal architecture, specs, and audit reports)
+docs/
+
 # Dependencies
 node_modules
 .pnp
 .pnp.js
 
-# Testing
-coverage
-.nyc_output
-
-# Production builds
+# Production builds & compilations
 dist
 dist-ssr
 build
+*.tsbuildinfo
 *.local
 
-# Environment variables
+# Environment variables & secrets
 .env
-.env*.local
+.env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example
+
+# Cryptographic Keys & Certificates
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+*.keystore
+secrets/
+*credential*.json
+*token*.json
+
+# Testing, Scratch, & Coverage
+coverage
+.nyc_output
+scratch/
+
+# Local databases & dumps
+*.sqlite
+*.sqlite3
+*.db
 
 # Logs
 logs
@@ -27,11 +52,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Editor directories and files
+# Editor & OS files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

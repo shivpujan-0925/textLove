@@ -4,8 +4,8 @@ import { useSocket } from '../../context/useSocket';
 import { Avatar } from '../ui/Avatar';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { Search, Plus, UserPlus, Radio, Shield, Clock, Loader2, MessageSquarePlus } from 'lucide-react';
+import { Search, Plus, UserPlus, Radio, Shield, Clock, Loader2, MessageSquarePlus, ShieldCheck } from 'lucide-react';
+import { PrivacyPolicyModal } from '../ui/PrivacyPolicyModal';
 
 interface SidebarProps {
   currentUser: User;
@@ -28,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [newUsername, setNewUsername] = useState('');
   const [discoveredUsers, setDiscoveredUsers] = useState<PublicUser[]>([]);
   const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   // Subscribe to presence updates for all conversation peers
   useEffect(() => {
@@ -131,13 +132,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {isInitiating && (
         <form onSubmit={handleStartChatSubmit} className="p-3 bg-surface-raised/60 border-b border-border">
           <label className="text-xs font-medium text-foreground-muted block mb-1.5">
-            Connect via unique username:
+            Connect via username:
           </label>
           <div className="flex gap-2">
             <Input
               value={newUsername}
               onChange={(e) => setNewUsername(e.target.value)}
-              placeholder="e.g. bob_privacy"
+              placeholder="e.g. alex"
               autoFocus
               className="h-8 text-xs font-mono"
               leftIcon={<UserPlus className="w-3.5 h-3.5" />}
@@ -148,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <p className="text-[10px] text-foreground-muted mt-1.5 flex items-center gap-1">
             <Radio className="w-3 h-3 text-accent-emerald inline" />
-            Live-only: recipient must be actively online to pair.
+            Live-only: recipient must be actively online.
           </p>
         </form>
       )}
@@ -327,16 +328,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ) : null}
       </div>
 
-      {/* Sidebar Footer Notice */}
-      <div className="p-3 bg-surface-raised/40 border-t border-border text-[11px] text-foreground-muted flex items-center justify-between">
-        <span className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
-          Zero server retention
-        </span>
-        <Badge variant="outline" className="text-[10px] font-mono py-0 h-4">
-          v0.1.0
-        </Badge>
+      {/* Sidebar Footer Notice with Copyright & Privacy Tag */}
+      <div className="p-3 bg-surface-raised/40 border-t border-border text-[11px] text-foreground-muted flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
+            Live ephemeral session
+          </span>
+          <span className="flex items-center gap-1 text-[10px] text-foreground-muted font-medium">
+            <Shield className="w-3 h-3 text-primary" />
+            E2EE
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between text-[10px] text-foreground-muted/80 pt-1.5 border-t border-border/40">
+          <span>&copy; {new Date().getFullYear()} textLove</span>
+          <button
+            type="button"
+            onClick={() => setIsPrivacyModalOpen(true)}
+            className="hover:text-primary transition-colors hover:underline cursor-pointer flex items-center gap-1"
+            title="View Zero-Retention Privacy Policy"
+            aria-label="View Zero-Retention Privacy Policy"
+          >
+            <ShieldCheck className="w-3 h-3 text-accent-emerald" />
+            <span>Privacy</span>
+          </button>
+        </div>
       </div>
+
+      {/* Production Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
     </aside>
   );
 };

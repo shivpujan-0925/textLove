@@ -142,6 +142,16 @@ export class ConnectionRegistry {
   }
 
   /**
+   * Get connection statistics for operational health metrics
+   */
+  public getStats(): { totalSockets: number; activeUsers: number } {
+    return {
+      totalSockets: this.socketToUser.size,
+      activeUsers: this.userToSockets.size,
+    };
+  }
+
+  /**
    * Clear registry (used in test teardown)
    */
   public clear(): void {

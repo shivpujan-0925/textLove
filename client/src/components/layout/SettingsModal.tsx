@@ -6,6 +6,7 @@ import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Avatar } from '../ui/Avatar';
+import { PrivacyPolicyModal } from '../ui/PrivacyPolicyModal';
 import {
   Sun,
   Moon,
@@ -19,6 +20,7 @@ import {
   AtSign,
   Camera,
   Loader2,
+  Eye,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -43,6 +45,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,7 +131,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         title="Settings & Privacy"
         description="Manage your textLove profile, interface theme, and privacy preferences."
       >
-        <div className="flex flex-col gap-6 py-2">
+        <div className="flex flex-col gap-4 sm:gap-5 py-1 sm:py-2">
           {/* Profile Overview */}
           <section className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -148,8 +151,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-4 p-3 rounded-2xl bg-surface-raised border border-border">
-              <div className="relative group">
+            <div className="flex items-center gap-3 sm:gap-4 p-3 rounded-2xl bg-surface-raised border border-border">
+              <div className="relative group flex-shrink-0">
                 <Avatar
                   name={user?.displayName || 'User'}
                   src={user?.avatarUrl}
@@ -180,19 +183,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-sm font-semibold text-foreground truncate">
-                  {user?.displayName || 'Guest User'}
+                  {user?.displayName || 'User'}
                 </span>
                 <span className="text-xs text-foreground-muted font-mono truncate">
-                  @{user?.username || 'unregistered'}
+                  @{user?.username || 'user'}
                 </span>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-[11px] text-accent-emerald flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
-                    Authenticated Session
+                    {user?.email ? 'Verified Account' : 'Active Session'}
                   </span>
                   <label
                     htmlFor="avatar-upload-btn"
-                    className="text-[11px] text-accent-violet hover:underline cursor-pointer flex items-center gap-1"
+                    className="text-[11px] text-primary hover:underline cursor-pointer flex items-center gap-1"
                   >
                     <Camera className="w-3 h-3" />
                     {isUploadingAvatar ? 'Uploading...' : 'Change photo'}
@@ -212,14 +215,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Change Username Form */}
             <form onSubmit={handleSaveUsername} className="flex flex-col gap-1.5 p-3 rounded-xl bg-surface-raised/50 border border-border">
               <span className="text-xs font-medium text-foreground">Unique Public Username</span>
-              <div className="flex gap-2">
-                <Input
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="3-24 chars (a-z, 0-9, _)"
-                  leftIcon={<AtSign className="w-3.5 h-3.5" />}
-                  className="h-8 text-xs font-mono"
-                />
+              <div className="flex gap-2 items-center">
+                <div className="flex-1 min-w-0">
+                  <Input
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="3-24 characters"
+                    leftIcon={<AtSign className="w-3.5 h-3.5" />}
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
                 <Button
                   type="submit"
                   size="sm"
@@ -231,20 +236,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </Button>
               </div>
               <p className="text-[10px] text-foreground-muted">
-                Peers use this unique username to find and initiate live encrypted chats with you.
+                Your unique handle for peers to find and chat with you.
               </p>
             </form>
 
             {/* Change Display Name Form */}
-            <form onSubmit={handleSaveProfile} className="flex gap-2 mt-1">
-              <Input
-                label="Display Name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Enter display name"
-                className="h-9 text-xs"
-              />
-              <Button type="submit" size="sm" className="mt-auto h-9 text-xs flex-shrink-0">
+            <form onSubmit={handleSaveProfile} className="flex gap-2 mt-1 items-end">
+              <div className="flex-1 min-w-0">
+                <Input
+                  label="Display Name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Enter display name"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <Button type="submit" size="sm" className="h-9 text-xs flex-shrink-0">
                 Save
               </Button>
             </form>
@@ -322,7 +329,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <Clock className="w-3.5 h-3.5 text-accent-amber flex-shrink-0" />
                 Authoritative 30-minute inactivity auto-expiry wipes RAM state.
               </li>
+              <li className="flex items-start gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Device Observation Notice:</strong> Browsers cannot block operating system-level screenshots, recordings, or camera capture. While textLove guarantees zero server/network retention, displayed content can always be captured by the recipient device.
+                </span>
+              </li>
             </ul>
+
+            <button
+              type="button"
+              onClick={() => setShowPrivacyModal(true)}
+              className="text-primary hover:underline text-[11px] font-medium flex items-center gap-1 mt-1 text-left cursor-pointer"
+            >
+              <Shield className="w-3 h-3 flex-shrink-0" />
+              <span>View Complete Privacy Policy & Security Standards &rarr;</span>
+            </button>
           </section>
 
           {/* Danger Zone: Account Deletion */}
@@ -348,8 +370,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </Button>
             </div>
           </section>
+
+          {/* Footer Copyright */}
+          <div className="text-center pt-2 border-t border-border/40 text-[10px] text-foreground-muted">
+            &copy; {new Date().getFullYear()} textLove Inc. Zero-retention encrypted communications.
+          </div>
         </div>
       </Dialog>
+
+      {/* Complete Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
 
       {/* Delete Account Confirmation Dialog */}
       <Dialog

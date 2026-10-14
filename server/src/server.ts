@@ -4,6 +4,7 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { connectDatabase, disconnectDatabase } from './config/db.js';
 import { initSocketServer } from './socket/index.js';
+import { ConversationExpiryService } from './services/conversationExpiry.service.js';
 
 const app = createApp();
 const server = http.createServer(app);
@@ -26,6 +27,7 @@ const startServer = async (): Promise<void> => {
 
 const gracefulShutdown = async (signal: string): Promise<void> => {
   logger.info({ signal }, 'Graceful shutdown initiated');
+  ConversationExpiryService.stopSweeper();
   await disconnectDatabase();
   server.close(() => {
     logger.info('HTTP server closed. Exiting process.');

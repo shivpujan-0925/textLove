@@ -5,6 +5,7 @@ import { useToast } from './context/useToast';
 import { AuthProvider, GoogleAuthUrlResponse } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
 import { SocketProvider, useSocket } from './context/SocketContext';
+import { PwaProvider, usePwa } from './context/PwaContext';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { ChatArea } from './components/layout/ChatArea';
@@ -17,7 +18,8 @@ import {
 } from './components/auth/GoogleAccountChooserModal';
 import { Conversation, EphemeralMessage, User } from './types';
 import { getCanonicalConversationId } from './utils/conversation';
-import { Radio } from 'lucide-react';
+import { Button } from './components/ui/Button';
+import { Radio, WifiOff, RefreshCw } from 'lucide-react';
 
 // Mock fallback user for unauthenticated preview
 const FALLBACK_USER: User = {
@@ -50,6 +52,7 @@ const INITIAL_MESSAGES: EphemeralMessage[] = [];
 const MainContent: React.FC = () => {
   const { toast } = useToast();
   const { user: authUser, csrfToken, loginWithGoogle, loginWithGoogleAccount } = useAuth();
+  const { isOnline, isInstallable, isUpdateAvailable, installPwa, applyUpdate } = usePwa();
   const {
     sendEncryptedMessage,
     onMessageReceived,
@@ -101,19 +104,17 @@ const MainContent: React.FC = () => {
   // Proactively normalize conversation IDs to canonical form when authenticated user changes
   useEffect(() => {
     if (authUser?.username) {
-      setConversations((prev) =>
-        prev.map((c) => {
-          const canonicalId = getCanonicalConversationId(authUser.username, c.peer.username);
+      const username = authUser.username;
+      setConversations((prev) => {
+        setSelectedConversationId((curr) => {
+          if (!curr) return null;
+          const match = prev.find((c) => c.id === curr);
+          return match ? getCanonicalConversationId(username, match.peer.username) : curr;
+        });
+        return prev.map((c) => {
+          const canonicalId = getCanonicalConversationId(username, c.peer.username);
           return c.id !== canonicalId ? { ...c, id: canonicalId } : c;
-        })
-      );
-      setSelectedConversationId((curr) => {
-        if (!curr) return null;
-        const match = conversations.find((c) => c.id === curr);
-        if (match) {
-          return getCanonicalConversationId(authUser.username, match.peer.username);
-        }
-        return curr;
+        });
       });
     }
   }, [authUser?.username]);
@@ -384,10 +385,46 @@ const MainContent: React.FC = () => {
         currentView={currentView}
         onNavigate={setCurrentView}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        isInstallable={isInstallable}
+        onInstallPwa={installPwa}
       />
 
+      {/* Offline Mode Warning Banner */}
+      {!isOnline && (
+        <aside
+          role="alert"
+          aria-live="assertive"
+          className="bg-accent-crimson/15 border-b border-accent-crimson/30 px-4 py-2 text-xs text-accent-crimson flex items-center justify-between z-40 flex-shrink-0"
+        >
+          <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
+            <WifiOff className="w-4 h-4 flex-shrink-0" />
+            <span className="font-medium text-[11px] sm:text-xs">
+              <strong>Offline</strong>: Live encrypted messaging is paused while offline. Reconnect to send messages.
+            </span>
+          </div>
+        </aside>
+      )}
+
+      {/* PWA Update Notification Toast */}
+      {isUpdateAvailable && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-20 right-4 z-50 glass-card p-3.5 rounded-2xl border border-primary/40 shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2"
+        >
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold text-foreground">Update Available</span>
+            <span className="text-[11px] text-foreground-muted">A new version of textLove is ready to install.</span>
+          </div>
+          <Button size="sm" variant="primary" onClick={applyUpdate} className="text-xs h-8 px-3 gap-1.5 flex-shrink-0">
+            <RefreshCw className="w-3.5 h-3.5" />
+            Reload Now
+          </Button>
+        </div>
+      )}
+
       {/* Accessible Gateway Connection Status Banner */}
-      {currentView === 'chat' && authUser && connectionStatus !== 'connected' && (
+      {currentView === 'chat' && isOnline && authUser && connectionStatus !== 'connected' && (
         <aside
           role="status"
           aria-live="polite"
@@ -401,10 +438,10 @@ const MainContent: React.FC = () => {
             <Radio className="w-3.5 h-3.5 animate-spin flex-shrink-0" />
             <span className="font-medium text-[11px] sm:text-xs">
               {connectionStatus === 'reconnecting'
-                ? 'Reconnecting to live encryption gateway... Live message delivery is paused until connection is restored.'
+                ? 'Reconnecting to secure gateway...'
                 : connectionStatus === 'connecting'
-                ? 'Connecting to live secure gateway...'
-                : 'Connection to live gateway lost. Real-time messages cannot be delivered.'}
+                ? 'Connecting to secure gateway...'
+                : 'Connection to gateway lost. Reconnecting...'}
             </span>
           </div>
         </aside>
@@ -487,7 +524,9 @@ export function App() {
       <ToastProvider>
         <AuthProvider>
           <SocketProvider>
-            <MainContent />
+            <PwaProvider>
+              <MainContent />
+            </PwaProvider>
           </SocketProvider>
         </AuthProvider>
       </ToastProvider>

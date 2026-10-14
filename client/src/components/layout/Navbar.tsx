@@ -1,62 +1,42 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useTheme } from '../../context/useTheme';
 import { useAuth } from '../../context/useAuth';
 import { useSocket } from '../../context/useSocket';
+import { usePwa } from '../../context/usePwa';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { Avatar } from '../ui/Avatar';
+import { BrandLogo } from '../ui/BrandLogo';
 import {
-  Heart,
   Sun,
   Moon,
   Laptop,
   Settings,
   MessageSquare,
-  Sparkles,
   LogOut,
-  Radio,
+  Download,
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentView: 'landing' | 'chat';
-  onNavigate: (view: 'landing' | 'chat') => void;
+  currentView?: 'landing' | 'chat';
+  onNavigate?: (view: 'landing' | 'chat') => void;
   onOpenSettings: () => void;
+  isInstallable?: boolean;
+  onInstallPwa?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  currentView,
-  onNavigate,
+  currentView = 'chat',
+  onNavigate = () => {},
   onOpenSettings,
+  isInstallable,
+  onInstallPwa,
 }) => {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
   const { connectionStatus } = useSocket();
-  const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
-
-  // Probe the backend health endpoint
-  useEffect(() => {
-    let isMounted = true;
-    const checkHealth = async () => {
-      try {
-        const res = await fetch('/api/health');
-        if (res.ok) {
-          const data = await res.json();
-          if (isMounted) setBackendHealthy(data.status === 'healthy');
-        } else {
-          if (isMounted) setBackendHealthy(false);
-        }
-      } catch {
-        if (isMounted) setBackendHealthy(false);
-      }
-    };
-
-    checkHealth();
-    const interval = setInterval(checkHealth, 30000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+  const pwa = usePwa();
+  const showInstall = isInstallable ?? pwa.isInstallable;
+  const handleInstall = onInstallPwa ?? pwa.installPwa;
 
   return (
     <header className="sticky top-0 z-40 w-full glass-panel border-b border-border/80 px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -64,71 +44,39 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="flex items-center gap-3">
         <button
           onClick={() => onNavigate('landing')}
-          className="flex items-center gap-2.5 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-xl p-1"
+          className="flex items-center text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-xl p-0.5"
           aria-label="textLove Home"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-accent-rose flex items-center justify-center shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
-            <Heart className="w-5 h-5 text-white fill-white/20" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-base tracking-tight text-foreground font-sans">
-                text<span className="text-primary font-bold">Love</span>
-              </span>
-              <Badge variant="purple" className="text-[10px] px-1.5 py-0 h-4 font-mono">
-                E2EE
-              </Badge>
-            </div>
-            <span className="text-[11px] text-foreground-muted -mt-0.5 hidden sm:block">
-              zero-retention messaging
-            </span>
-          </div>
+          <BrandLogo size="md" showText={true} textSize="text-lg" />
         </button>
 
-        {/* Live connection status indicator */}
-        <div className="hidden md:flex items-center ml-2">
-          {user ? (
-            connectionStatus === 'connected' ? (
-              <Badge variant="emerald" className="gap-1 text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-pulse" />
-                Live Connected
-              </Badge>
-            ) : connectionStatus === 'connecting' ? (
-              <Badge variant="amber" className="gap-1 text-[11px]">
+        {/* Clean, product-level live connection indicator */}
+        {currentView === 'chat' && (
+          <div className="hidden sm:flex items-center ml-1">
+            {connectionStatus === 'connected' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-emerald/10 text-accent-emerald border border-accent-emerald/20 select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
+                Live
+              </span>
+            ) : connectionStatus === 'connecting' || connectionStatus === 'reconnecting' ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-amber/10 text-accent-amber border border-accent-amber/20 select-none">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent-amber animate-pulse" />
-                Connecting...
-              </Badge>
-            ) : connectionStatus === 'reconnecting' ? (
-              <Badge variant="amber" className="gap-1 text-[11px]">
-                <Radio className="w-3 h-3 text-accent-amber animate-spin" />
-                Reconnecting...
-              </Badge>
+                Connecting
+              </span>
             ) : (
-              <Badge variant="crimson" className="gap-1 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-crimson/10 text-accent-crimson border border-accent-crimson/20 select-none">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent-crimson" />
-                Disconnected
-              </Badge>
-            )
-          ) : backendHealthy === true ? (
-            <Badge variant="emerald" className="gap-1 text-[11px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-pulse" />
-              API Online
-            </Badge>
-          ) : backendHealthy === false ? (
-            <Badge variant="crimson" className="gap-1 text-[11px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-crimson" />
-              API Offline
-            </Badge>
-          ) : (
-            <Badge variant="default" className="text-[11px]">Connecting...</Badge>
-          )}
-        </div>
+                Offline
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Navigation & Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* View Switcher Button */}
-        {currentView === 'landing' ? (
+        {/* View Switcher Button (shown on landing page) */}
+        {currentView === 'landing' && (
           <Button
             variant="primary"
             size="sm"
@@ -138,15 +86,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             <MessageSquare className="w-4 h-4" />
             <span className="hidden sm:inline">Open Chat</span>
           </Button>
-        ) : (
+        )}
+
+        {/* Install PWA Prompt Button */}
+        {showInstall && (
           <Button
-            variant="ghost"
+            variant="glass"
             size="sm"
-            onClick={() => onNavigate('landing')}
-            className="gap-1.5"
+            onClick={handleInstall}
+            className="gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/10"
+            title="Install textLove Application"
+            aria-label="Install textLove App"
           >
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="hidden sm:inline">About textLove</span>
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Install App</span>
           </Button>
         )}
 
