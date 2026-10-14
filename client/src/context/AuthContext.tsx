@@ -66,7 +66,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 1. Check existing session on load
   const checkAuth = useCallback(async () => {
     try {
-      const res = await fetch(apiUrl('/api/v1/auth/me'), { credentials: 'include' });
+      const token = sessionStorage.getItem('textlove_session_token');
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(apiUrl('/api/v1/auth/me'), {
+        headers,
+        credentials: 'include',
+      });
       if (res.ok) {
         const data = await res.json();
         setUser({
@@ -98,6 +105,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await fetch(apiUrl('/api/v1/auth/google/url'), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
+        if (data.codeVerifier) {
+          sessionStorage.setItem('textlove_oauth_verifier', data.codeVerifier);
+        }
+        if (data.state) {
+          sessionStorage.setItem('textlove_oauth_state', data.state);
+        }
         return data;
       }
       const errData = await res.json().catch(() => ({}));
@@ -168,15 +181,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (code: string, state: string) => {
       try {
         setIsLoading(true);
+        const codeVerifier = sessionStorage.getItem('textlove_oauth_verifier') || undefined;
         const res = await fetch(apiUrl('/api/v1/auth/google/callback'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ code, state }),
+          body: JSON.stringify({ code, state, codeVerifier }),
         });
 
         if (res.ok) {
           const data = await res.json();
+          if (data.token) {
+            sessionStorage.setItem('textlove_session_token', data.token);
+          }
+          sessionStorage.removeItem('textlove_oauth_verifier');
+          sessionStorage.removeItem('textlove_oauth_state');
           setUser({
             id: data.user.id,
             username: data.user.username,
@@ -237,6 +256,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setUser(null);
       setCsrfToken(null);
+      sessionStorage.removeItem('textlove_session_token');
+      sessionStorage.removeItem('textlove_oauth_verifier');
+      sessionStorage.removeItem('textlove_oauth_state');
       KeyStore.getInstance().reset();
     }
   };

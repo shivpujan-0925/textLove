@@ -21,7 +21,9 @@ export const authenticate = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const token = req.cookies?.['textlove_session'];
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+  const token = req.cookies?.['textlove_session'] || bearerToken;
 
   if (!token) {
     return next(new AppError('Authentication required. Please sign in.', 401, 'UNAUTHORIZED'));

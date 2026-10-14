@@ -79,6 +79,13 @@ const MainContent: React.FC = () => {
 
   const activeUser: User = authUser || FALLBACK_USER;
 
+  // Automatically switch to chat view when user is logged in
+  useEffect(() => {
+    if (authUser) {
+      setCurrentView('chat');
+    }
+  }, [authUser]);
+
   // Proactively subscribe to presence of all peer usernames
   useEffect(() => {
     const peerUsernames = conversations.map((c) => c.peer.username);

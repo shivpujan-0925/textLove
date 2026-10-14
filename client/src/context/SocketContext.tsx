@@ -95,7 +95,9 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setConnectionStatus('connecting');
 
+    const sessionToken = typeof window !== 'undefined' ? sessionStorage.getItem('textlove_session_token') : null;
     const newSocket = io(SOCKET_URL, {
+      auth: sessionToken ? { token: sessionToken } : undefined,
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,

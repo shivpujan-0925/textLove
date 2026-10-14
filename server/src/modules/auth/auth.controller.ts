@@ -28,6 +28,7 @@ export class AuthController {
       res.status(200).json({
         authUrl,
         state,
+        codeVerifier,
         isMock: GoogleAuthService.isMockEnvironment(),
       });
     } catch (err) {
@@ -40,33 +41,43 @@ export class AuthController {
    */
   public static async handleGoogleCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { idToken: providedToken, code, state: clientState } = req.body;
+      const { idToken: providedToken, code, state: clientState, codeVerifier: clientVerifier } = req.body;
 
       if (!providedToken && !code) {
         throw new AppError('Google identity token or authorization code is required.', 400, 'MISSING_TOKEN');
       }
 
-      // Validate OAuth state
+      let codeVerifierToUse: string | undefined = clientVerifier;
+
       const stateCookie = req.cookies?.['textlove_oauth_state'];
-      if (!stateCookie) {
+      if (!stateCookie && !clientState) {
         throw new AppError('OAuth session expired or state missing. Please try again.', 403, 'STATE_EXPIRED');
       }
 
-      let parsedState: { state: string; codeVerifier: string };
-      try {
-        parsedState = JSON.parse(stateCookie);
-      } catch {
-        throw new AppError('Malformed OAuth state.', 403, 'INVALID_OAUTH_STATE');
+      // Validate OAuth state if cookie exists
+      if (stateCookie) {
+        try {
+          const parsedState = JSON.parse(stateCookie);
+          if (clientState && parsedState.state && clientState !== parsedState.state) {
+            throw new AppError('OAuth state mismatch. Potential CSRF detected.', 403, 'STATE_MISMATCH');
+          }
+          if (!codeVerifierToUse) {
+            codeVerifierToUse = parsedState.codeVerifier;
+          }
+        } catch (e: unknown) {
+          if ((e as AppError).errorCode === 'STATE_MISMATCH') throw e;
+          throw new AppError('Malformed OAuth state.', 403, 'INVALID_OAUTH_STATE');
+        }
       }
 
-      if (clientState && clientState !== parsedState.state) {
-        throw new AppError('OAuth state mismatch. Potential CSRF detected.', 403, 'STATE_MISMATCH');
+      if (!providedToken && code && !codeVerifierToUse) {
+        throw new AppError('OAuth session expired or state missing. Please try again.', 403, 'STATE_EXPIRED');
       }
 
       // Retrieve or exchange ID token
       let idToken = providedToken;
-      if (!idToken && code) {
-        idToken = await GoogleAuthService.exchangeCodeForTokens(code, parsedState.codeVerifier);
+      if (!idToken && code && codeVerifierToUse) {
+        idToken = await GoogleAuthService.exchangeCodeForTokens(code, codeVerifierToUse);
       }
 
       // Hash client IP for session binding
@@ -95,6 +106,7 @@ export class AuthController {
       res.status(200).json({
         success: true,
         user: result.user,
+        token: result.rawToken,
         csrfToken: result.csrfToken,
       });
     } catch (err) {

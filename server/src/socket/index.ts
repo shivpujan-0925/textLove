@@ -51,25 +51,32 @@ export function initSocketServer(httpServer: HttpServer): Server {
   // Authoritative background sweep daemon (every 30 seconds)
   ConversationExpiryService.startSweeper(io, 30000);
 
-  // 1. Authenticate Socket connection via HttpOnly session cookie
+  // 1. Authenticate Socket connection via HttpOnly session cookie or auth token
   io.use(async (socket, next) => {
     try {
       const cookieHeader = socket.handshake.headers.cookie;
-      if (!cookieHeader) {
-        return next(new Error('AUTHENTICATION_REQUIRED'));
+      let sessionToken: string | undefined;
+
+      if (cookieHeader) {
+        const cookies = Object.fromEntries(
+          cookieHeader.split(';').map((c) => {
+            const [k, ...v] = c.trim().split('=');
+            return [k, decodeURIComponent(v.join('='))];
+          })
+        );
+        sessionToken = cookies['textlove_session'];
       }
 
-      // Parse textlove_session cookie
-      const cookies = Object.fromEntries(
-        cookieHeader.split(';').map((c) => {
-          const [k, ...v] = c.trim().split('=');
-          return [k, decodeURIComponent(v.join('='))];
-        })
-      );
+      if (!sessionToken && socket.handshake.auth?.token) {
+        sessionToken = String(socket.handshake.auth.token);
+      }
 
-      const sessionToken = cookies['textlove_session'];
+      if (!sessionToken && socket.handshake.headers.authorization?.startsWith('Bearer ')) {
+        sessionToken = socket.handshake.headers.authorization.slice(7).trim();
+      }
+
       if (!sessionToken) {
-        return next(new Error('INVALID_SESSION'));
+        return next(new Error('AUTHENTICATION_REQUIRED'));
       }
 
       const valid = await SessionRepository.findValidSession(sessionToken);
