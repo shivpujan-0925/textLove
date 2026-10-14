@@ -115,6 +115,14 @@ export function initSocketServer(httpServer: HttpServer): Server {
       socket.emit('presence:heartbeat_ack', { timestamp: Date.now() });
     });
 
+    // Per-socket sliding window rate limiter
+    const rateLimits = {
+      msgCount: 0,
+      msgReset: Date.now() + 10000,
+      typingCount: 0,
+      typingReset: Date.now() + 10000,
+    };
+
     // -------------------------------------------------------------------------
     // B. Strict Live-Only Message Relay (Zero Retention)
     // -------------------------------------------------------------------------
@@ -130,6 +138,22 @@ export function initSocketServer(httpServer: HttpServer): Server {
         senderEphemeralPublicKey?: string;
       }) => {
         try {
+          const now = Date.now();
+          if (now > rateLimits.msgReset) {
+            rateLimits.msgCount = 0;
+            rateLimits.msgReset = now + 10000;
+          }
+          rateLimits.msgCount += 1;
+          if (rateLimits.msgCount > 40) {
+            socket.emit('msg:error', {
+              conversationId: payload?.conversationId,
+              seq: payload?.seq,
+              code: 'RATE_LIMIT_EXCEEDED',
+              message: 'Message rate limit exceeded. Please slow down.',
+            });
+            return;
+          }
+
           // Invariant Check 1: Reject if any prohibited plaintext fields exist
           const raw = payload as Record<string, unknown>;
           const prohibited = ['text', 'plaintext', 'message', 'body', 'content', 'msg'];
@@ -278,14 +302,25 @@ export function initSocketServer(httpServer: HttpServer): Server {
     // -------------------------------------------------------------------------
     socket.on(
       'msg:ack',
-      (payload: {
+      async (payload: {
         conversationId: string;
         seq: number;
         senderUsername: string;
         status: 'DECRYPTED_BY_PEER';
       }) => {
-        if (!payload?.senderUsername || !payload?.seq) return;
-        const senderSockets = connectionRegistry.getSocketsForUser(payload.senderUsername);
+        if (!payload?.senderUsername || !payload?.seq || !payload?.conversationId) return;
+        const sender = payload.senderUsername.toLowerCase().trim();
+
+        // Security check: Validate conversation existence & participant authorization
+        const conv = await ConversationRepository.findByCanonicalId(payload.conversationId);
+        if (!conv || conv.status !== 'active') return;
+
+        const isParticipant =
+          (conv.participantAUsername === username && conv.participantBUsername === sender) ||
+          (conv.participantAUsername === sender && conv.participantBUsername === username);
+        if (!isParticipant) return;
+
+        const senderSockets = connectionRegistry.getSocketsForUser(sender);
         for (const senderSocketId of senderSockets) {
           io.to(senderSocketId).emit('msg:peer_ack', {
             conversationId: payload.conversationId,
@@ -301,11 +336,27 @@ export function initSocketServer(httpServer: HttpServer): Server {
     // -------------------------------------------------------------------------
     socket.on('conv:typing', async (payload: { conversationId: string; recipientUsername: string; isTyping: boolean }) => {
       if (!payload?.recipientUsername || !payload?.conversationId) return;
+
+      const now = Date.now();
+      if (now > rateLimits.typingReset) {
+        rateLimits.typingCount = 0;
+        rateLimits.typingReset = now + 10000;
+      }
+      rateLimits.typingCount += 1;
+      if (rateLimits.typingCount > 60) return; // Drop excessive typing events
+
       const target = payload.recipientUsername.toLowerCase().trim();
       const conv = await ConversationRepository.findByCanonicalId(payload.conversationId);
       if (!conv || conv.status !== 'active' || Date.now() >= conv.expiresAt.getTime()) {
         return; // Drop typing indicator if conversation is expired or closed
       }
+
+      // Security check: Validate that sender and target are actual participants
+      const isParticipant =
+        (conv.participantAUsername === username && conv.participantBUsername === target) ||
+        (conv.participantAUsername === target && conv.participantBUsername === username);
+      if (!isParticipant) return;
+
       const targetSockets = connectionRegistry.getSocketsForUser(target);
       for (const targetSocketId of targetSockets) {
         io.to(targetSocketId).emit('conv:typing', {

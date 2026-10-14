@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/appError.js';
 
+import crypto from 'crypto';
+
 export const csrfProtection = (
   req: Request,
   _res: Response,
@@ -19,7 +21,23 @@ export const csrfProtection = (
 
   const clientCsrfToken = req.headers['x-csrf-token'];
 
-  if (!clientCsrfToken || clientCsrfToken !== req.session.csrfToken) {
+  if (!clientCsrfToken || typeof clientCsrfToken !== 'string') {
+    return next(
+      new AppError(
+        'Invalid or missing CSRF token. Request blocked for your security.',
+        403,
+        'INVALID_CSRF_TOKEN'
+      )
+    );
+  }
+
+  const expectedBuffer = Buffer.from(req.session.csrfToken);
+  const actualBuffer = Buffer.from(clientCsrfToken);
+
+  if (
+    expectedBuffer.length !== actualBuffer.length ||
+    !crypto.timingSafeEqual(expectedBuffer, actualBuffer)
+  ) {
     return next(
       new AppError(
         'Invalid or missing CSRF token. Request blocked for your security.',
