@@ -1,7 +1,16 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '../types';
 import { KeyStore } from '../crypto/keyStore';
 import { apiUrl } from '../utils/api';
+
+const getAuthHeaders = (extraHeaders: Record<string, string> = {}): Record<string, string> => {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('textlove_session_token') : null;
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 export interface GoogleAccountDetails {
   id: string;
@@ -37,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hasHandledCallback = useRef(false);
 
   const registerE2EEKeys = useCallback(async (token?: string | null, targetUsername?: string) => {
     const activeToken = token || csrfToken;
@@ -48,10 +58,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const bundle = KeyStore.getInstance().ensureKeys();
       const res = await fetch(apiUrl('/api/v1/keys/register'), {
         method: 'POST',
-        headers: {
+        headers: getAuthHeaders({
           'Content-Type': 'application/json',
           'X-CSRF-Token': activeToken,
-        },
+        }),
         credentials: 'include',
         body: JSON.stringify(bundle),
       });
@@ -160,6 +170,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const data = await callbackRes.json();
+      if (data.token) {
+        sessionStorage.setItem('textlove_session_token', data.token);
+      }
       setUser({
         id: data.user.id,
         username: data.user.username,
@@ -221,11 +234,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   useEffect(() => {
+    if (hasHandledCallback.current) return;
+
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
 
     if (code && state) {
+      hasHandledCallback.current = true;
       handleOAuthCallback(code, state);
     } else {
       checkAuth();
@@ -269,10 +285,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const res = await fetch(apiUrl('/api/v1/users/username'), {
       method: 'PATCH',
-      headers: {
+      headers: getAuthHeaders({
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfToken,
-      },
+      }),
       credentials: 'include',
       body: JSON.stringify({ newUsername }),
     });
@@ -291,10 +307,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const res = await fetch(apiUrl('/api/v1/users/profile'), {
       method: 'PATCH',
-      headers: {
+      headers: getAuthHeaders({
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfToken,
-      },
+      }),
       credentials: 'include',
       body: JSON.stringify({ displayName }),
     });
@@ -316,9 +332,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const res = await fetch(apiUrl('/api/v1/users/avatar'), {
       method: 'POST',
-      headers: {
+      headers: getAuthHeaders({
         'X-CSRF-Token': csrfToken,
-      },
+      }),
       credentials: 'include',
       body: formData,
     });

@@ -14,6 +14,7 @@ const googleCallbackSchema = {
       idToken: z.string().optional(),
       code: z.string().optional(),
       state: z.string().optional(),
+      codeVerifier: z.string().optional(),
     })
     .refine((data) => Boolean(data.idToken || data.code), {
       message: 'Either identity token or authorization code is required',
