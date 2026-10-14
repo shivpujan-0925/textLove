@@ -115,9 +115,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   // Fetch peer public key bundle for accurate Safety Number calculation & key-change detection
   useEffect(() => {
     let isMounted = true;
+    const cleanPeer = conversation.peer.username.replace(/^@/, '').trim();
     const loadPeerKey = async () => {
       try {
-        const bundle = await fetchPeerKeyBundle(conversation.peer.username, true);
+        const bundle = await fetchPeerKeyBundle(cleanPeer, true);
         if (isMounted && bundle) {
           if (initialPeerKeyRef.current && initialPeerKeyRef.current !== bundle.identityPublicKey) {
             setKeyChangedWarning(true);
@@ -262,14 +263,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     }
   };
 
-  // Compute symmetric safety number formatted into 3 groups
+  // Compute symmetric safety number formatted into 4 groups of 3 digits
   const safetyNumberFormatted = (() => {
     try {
       const ks = KeyStore.getInstance();
       ks.ensureKeys();
       if (peerIdentityPublicKey) {
         const raw = ks.getSafetyNumber(peerIdentityPublicKey);
-        return raw.replace(/(\d{4})(\d{4})(\d{4})/, '$1  $2  $3');
+        return raw.replace(/-/g, '  ');
       }
       return 'Calculating...';
     } catch {
@@ -368,7 +369,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             size="sm"
             onClick={async () => {
               try {
-                const bundle = await fetchPeerKeyBundle(conversation.peer.username, true);
+                const cleanPeer = conversation.peer.username.replace(/^@/, '').trim();
+                const bundle = await fetchPeerKeyBundle(cleanPeer, true);
                 if (bundle) setPeerIdentityPublicKey(bundle.identityPublicKey);
               } catch {
                 // Handled

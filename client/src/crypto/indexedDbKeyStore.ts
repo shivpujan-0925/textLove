@@ -39,6 +39,50 @@ interface EncryptedRecord {
 // In-memory fallback map for non-browser or mock testing environments
 const memoryVault = new Map<string, StoredUserKeys>();
 
+function getSessionStorageKeys(username: string): StoredUserKeys | null {
+  if (typeof sessionStorage === 'undefined' || !username) return null;
+  try {
+    const raw = sessionStorage.getItem(`textlove_vault_session_${username.toLowerCase().trim()}`);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function setSessionStorageKeys(username: string, keys: StoredUserKeys): void {
+  if (typeof sessionStorage === 'undefined' || !username) return;
+  try {
+    sessionStorage.setItem(`textlove_vault_session_${username.toLowerCase().trim()}`, JSON.stringify(keys));
+  } catch {
+    // Graceful error ignore on storage full
+  }
+}
+
+function purgeSessionStorageKeys(username: string): void {
+  if (typeof sessionStorage === 'undefined' || !username) return;
+  try {
+    sessionStorage.removeItem(`textlove_vault_session_${username.toLowerCase().trim()}`);
+  } catch {}
+}
+
+/**
+ * Synchronously load user cryptographic keys from memory or active session storage.
+ */
+export function loadKeysFromSecureVaultSync(username: string): StoredUserKeys | null {
+  const normUser = username.toLowerCase().trim();
+  if (!normUser) return null;
+  if (memoryVault.has(normUser)) {
+    return memoryVault.get(normUser)!;
+  }
+  const sessionStored = getSessionStorageKeys(normUser);
+  if (sessionStored) {
+    memoryVault.set(normUser, sessionStored);
+    return sessionStored;
+  }
+  return null;
+}
+
 function isIndexedDbAvailable(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -124,8 +168,9 @@ export async function saveKeysToSecureVault(
 ): Promise<void> {
   const normUser = username.toLowerCase().trim();
 
-  // Always keep memory vault updated
+  // Always keep memory vault and sessionStorage updated synchronously
   memoryVault.set(normUser, keys);
+  setSessionStorageKeys(normUser, keys);
 
   // Clean up any legacy localStorage entries immediately
   purgeLegacyLocalStorage(normUser);
@@ -179,9 +224,10 @@ export async function loadKeysFromSecureVault(
 ): Promise<StoredUserKeys | null> {
   const normUser = username.toLowerCase().trim();
 
-  // 1. Check in-memory vault first
-  if (memoryVault.has(normUser)) {
-    return memoryVault.get(normUser)!;
+  // 1. Check in-memory vault and sessionStorage first
+  const syncKeys = loadKeysFromSecureVaultSync(normUser);
+  if (syncKeys) {
+    return syncKeys;
   }
 
   // 2. Check IndexedDB
@@ -213,6 +259,7 @@ export async function loadKeysFromSecureVault(
         const decryptedStr = new TextDecoder().decode(decryptedBuffer);
         const keys = JSON.parse(decryptedStr) as StoredUserKeys;
         memoryVault.set(normUser, keys);
+        setSessionStorageKeys(normUser, keys);
         return keys;
       }
     } catch (err) {
@@ -224,6 +271,7 @@ export async function loadKeysFromSecureVault(
   const migrated = migrateLegacyLocalStorage(normUser);
   if (migrated) {
     memoryVault.set(normUser, migrated);
+    setSessionStorageKeys(normUser, migrated);
     // Asynchronously save to IndexedDB
     saveKeysToSecureVault(normUser, migrated).catch(() => {});
     return migrated;
@@ -233,11 +281,12 @@ export async function loadKeysFromSecureVault(
 }
 
 /**
- * Purge user keys from IndexedDB vault and memory.
+ * Purge user keys from IndexedDB vault, sessionStorage, and memory.
  */
 export async function purgeFromSecureVault(username: string): Promise<void> {
   const normUser = username.toLowerCase().trim();
   memoryVault.delete(normUser);
+  purgeSessionStorageKeys(normUser);
   purgeLegacyLocalStorage(normUser);
 
   if (!isIndexedDbAvailable()) return;
@@ -261,6 +310,14 @@ export async function purgeFromSecureVault(username: string): Promise<void> {
  */
 export function clearMemoryVault(): void {
   memoryVault.clear();
+  if (typeof sessionStorage !== 'undefined') {
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i);
+      if (key && key.startsWith('textlove_vault_session_')) {
+        sessionStorage.removeItem(key);
+      }
+    }
+  }
 }
 
 /**

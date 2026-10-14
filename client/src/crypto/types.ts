@@ -40,6 +40,8 @@ export interface SessionState {
   peerIdentityPublicKey: string;
   peerSafetyNumber: string;
   keyChangedWarning?: boolean;
+  ephemeralPublicKeyHex?: string;
+  peerEphemeralPublicKeyHex?: string;
   
   // Symmetric ratchet state
   rootKey: Uint8Array;

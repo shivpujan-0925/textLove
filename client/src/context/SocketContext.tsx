@@ -65,7 +65,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
+      const token = typeof window !== 'undefined' ? sessionStorage.getItem('textlove_session_token') : null;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch(apiUrl(`/api/v1/keys/${encodeURIComponent(username)}`), {
+        headers,
         credentials: 'include',
       });
       if (!res.ok) {
@@ -369,11 +374,13 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // 3. Initialize outbound E2EE session with peer's key bundle using canonical conversation ID
       const ks = KeyStore.getInstance();
       ks.ensureKeys();
-      const { ephemeralPublicKeyHex } = ks.getOrCreateOutboundSession(
+      const { session, ephemeralPublicKeyHex } = ks.getOrCreateOutboundSession(
         canonicalConvId,
         recipientUsername,
         peerBundle
       );
+
+      const activeEphemeralKey = ephemeralPublicKeyHex || session.ephemeralPublicKeyHex;
 
       // 4. Encrypt with AES-256-GCM AEAD using canonical conversation ID
       const encrypted = await ks.encrypt(
@@ -381,7 +388,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         plaintext,
         senderUsername,
         recipientUsername,
-        ephemeralPublicKeyHex
+        activeEphemeralKey
       );
 
       // 5. Emit live payload over WebSocket with canonical conversation ID
@@ -392,7 +399,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         iv: encrypted.iv,
         seq: encrypted.seq,
         timestamp: encrypted.timestamp,
-        senderEphemeralPublicKey: ephemeralPublicKeyHex,
+        senderEphemeralPublicKey: activeEphemeralKey,
       });
 
       return {

@@ -53,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!activeToken) return;
     try {
       if (targetUsername) {
-        KeyStore.getInstance().initForUser(targetUsername);
+        await KeyStore.getInstance().initForUserAsync(targetUsername);
       }
       const bundle = KeyStore.getInstance().ensureKeys();
       const res = await fetch(apiUrl('/api/v1/keys/register'), {
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           hasRegisteredKeys: data.user.hasRegisteredKeys,
         });
         setCsrfToken(data.csrfToken);
-        KeyStore.getInstance().initForUser(data.user.username);
+        await KeyStore.getInstance().initForUserAsync(data.user.username);
         registerE2EEKeys(data.csrfToken, data.user.username);
       } else {
         setUser(null);
@@ -182,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasRegisteredKeys: data.user.hasRegisteredKeys,
       });
       setCsrfToken(data.csrfToken);
-      KeyStore.getInstance().initForUser(data.user.username);
+      await KeyStore.getInstance().initForUserAsync(data.user.username);
       registerE2EEKeys(data.csrfToken, data.user.username);
     } finally {
       setIsLoading(false);
@@ -218,7 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             hasRegisteredKeys: data.user.hasRegisteredKeys,
           });
           setCsrfToken(data.csrfToken);
-          KeyStore.getInstance().initForUser(data.user.username);
+          await KeyStore.getInstance().initForUserAsync(data.user.username);
           registerE2EEKeys(data.csrfToken, data.user.username);
           // Clean query params from URL
           const cleanPath = window.location.pathname.replace(/\/auth\/callback\/?$/, '') || '/';

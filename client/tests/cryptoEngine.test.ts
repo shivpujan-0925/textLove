@@ -342,5 +342,74 @@ describe('textLove Cryptographic Engine (E2EE Foundation)', () => {
       expect(localStorage.getItem('textlove_e2ee_migrated_user_prekey')).toBeNull();
       expect(localStorage.getItem('textlove_e2ee_migrated_user_signature')).toBeNull();
     });
+
+    it('handles concurrent two-way message initiation and matches Safety Numbers', async () => {
+      // 1. Simulate Alice device
+      const aliceStore = KeyStore.getInstance();
+      aliceStore.reset();
+      aliceStore.initForUser('alice');
+      const aliceBundle = aliceStore.ensureKeys();
+
+      // 2. Simulate Bob device
+      // Use separate KeyStore or direct methods to emulate Bob
+      const bobId = generateIdentityKeyPair();
+      const bobPreKey = generateSignedPreKey(bobId.bytes.privateKey);
+      const bobBundle = {
+        identityPublicKey: bobId.hex.publicKey,
+        signedPreKey: bobPreKey.hex.publicKey,
+        preKeySignature: bobPreKey.signatureHex,
+      };
+
+      const convId = 'conv_alice_bob';
+
+      // 3. Alice initiates outbound message to Bob
+      const { session: aliceSession, ephemeralPublicKeyHex: aliceEph } = aliceStore.getOrCreateOutboundSession(
+        convId,
+        'bob',
+        bobBundle
+      );
+      const msgAlice = await aliceStore.encrypt(convId, 'hii from alice', 'alice', 'bob', aliceEph);
+
+      // 4. Bob independently initiates outbound message to Alice before receiving Alice's message
+      const { session: bobSession, ephemeralPublicKeyHex: bobEph } = initializeOutboundSession(
+        bobPreKey.hex.privateKey,
+        bobId.hex.publicKey,
+        aliceBundle,
+        convId,
+        'alice'
+      );
+      const msgBob = await encryptMessage(bobSession, 'hello from bob', 'bob', 'alice', bobEph);
+
+      // 5. Bob receives Alice's message and establishes inbound receive chain
+      const bobInbound = initializeInboundSession(
+        bobPreKey.hex.privateKey,
+        bobId.hex.publicKey,
+        aliceBundle.identityPublicKey,
+        aliceBundle.signedPreKey,
+        aliceEph,
+        convId,
+        'alice'
+      );
+      bobSession.recvChainKey = bobInbound.recvChainKey;
+      bobSession.recvSeq = 0;
+      const decryptedByBob = await decryptMessage(bobSession, msgAlice);
+      expect(decryptedByBob).toBe('hii from alice');
+
+      // 6. Alice receives Bob's message: Alice attaches Bob's inbound receive chain
+      aliceStore.getOrCreateInboundSession(
+        convId,
+        'bob',
+        bobBundle.identityPublicKey,
+        bobBundle.signedPreKey,
+        bobEph
+      );
+      const decryptedByAlice = await aliceStore.decrypt(convId, msgBob);
+      expect(decryptedByAlice).toBe('hello from bob');
+
+      // 7. Symmetrical safety number check
+      const snAlice = aliceStore.getSafetyNumber(bobBundle.identityPublicKey);
+      const snBob = calculateSafetyNumber(bobBundle.identityPublicKey, aliceBundle.identityPublicKey).safetyNumber;
+      expect(snAlice).toBe(snBob);
+    });
   });
 });

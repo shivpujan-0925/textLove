@@ -16,6 +16,7 @@ import {
 import {
   saveKeysToSecureVault,
   loadKeysFromSecureVault,
+  loadKeysFromSecureVaultSync,
   purgeFromSecureVault,
   clearMemoryVault,
 } from './indexedDbKeyStore';
@@ -56,13 +57,21 @@ export class KeyStore {
     }
 
     this.currentUsername = username;
-    this.identityKeys = null;
-    this.signedPreKey = null;
-    this.preKeySignature = null;
     this.sessions.clear();
     this.peerIdentityKeys.clear();
 
-    this.loadFromStorage();
+    // 1. Synchronously hydrate from memory vault or sessionStorage first
+    const syncKeys = loadKeysFromSecureVaultSync(this.currentUsername);
+    if (syncKeys) {
+      this.identityKeys = syncKeys.identityKeys;
+      this.signedPreKey = syncKeys.signedPreKey;
+      this.preKeySignature = syncKeys.preKeySignature;
+    } else {
+      this.identityKeys = null;
+      this.signedPreKey = null;
+      this.preKeySignature = null;
+      this.loadFromStorage();
+    }
   }
 
   /**
@@ -70,6 +79,9 @@ export class KeyStore {
    */
   public async initForUserAsync(rawUsername: string): Promise<void> {
     this.initForUser(rawUsername);
+    if (this.identityKeys && this.signedPreKey && this.preKeySignature) {
+      return;
+    }
     const stored = await loadKeysFromSecureVault(this.currentUsername);
     if (stored) {
       this.identityKeys = stored.identityKeys;
@@ -96,11 +108,23 @@ export class KeyStore {
   }
 
   /**
-   * Ensure user has generated cryptographic keys on this device
+   * Ensure user has generated cryptographic keys on this device.
+   * Checks synchronous storage first to strictly prevent regenerating keys on reload.
    */
   public ensureKeys(): PublicKeyBundleHex {
     if (this.identityKeys && this.signedPreKey && this.preKeySignature) {
       return this.getPublicBundle();
+    }
+
+    // Check synchronous cache again before generating fresh keys
+    if (this.currentUsername) {
+      const syncKeys = loadKeysFromSecureVaultSync(this.currentUsername);
+      if (syncKeys) {
+        this.identityKeys = syncKeys.identityKeys;
+        this.signedPreKey = syncKeys.signedPreKey;
+        this.preKeySignature = syncKeys.preKeySignature;
+        return this.getPublicBundle();
+      }
     }
 
     // 1. Generate new Ed25519 Identity Key Pair
@@ -150,7 +174,11 @@ export class KeyStore {
     const existing = this.sessions.get(conversationId);
     if (existing) {
       if (keyChangedWarning) existing.keyChangedWarning = true;
-      return { session: existing, keyChangedWarning };
+      return {
+        session: existing,
+        ephemeralPublicKeyHex: existing.ephemeralPublicKeyHex,
+        keyChangedWarning,
+      };
     }
 
     this.ensureKeys();
@@ -162,13 +190,16 @@ export class KeyStore {
       peerUsername
     );
 
+    session.ephemeralPublicKeyHex = ephemeralPublicKeyHex;
     if (keyChangedWarning) session.keyChangedWarning = true;
     this.sessions.set(conversationId, session);
     return { session, ephemeralPublicKeyHex, keyChangedWarning };
   }
 
   /**
-   * Initialize or retrieve an inbound session from a received encrypted payload
+   * Initialize or retrieve an inbound session from a received encrypted payload.
+   * If an existing session already exists (e.g. from an outbound message), it attaches
+   * the inbound receive chain for the peer's ephemeral public key without overwriting the send chain.
    */
   public getOrCreateInboundSession(
     conversationId: string,
@@ -186,12 +217,30 @@ export class KeyStore {
     this.peerIdentityKeys.set(peerUsername, peerIdentityPublicKeyHex);
 
     const existing = this.sessions.get(conversationId);
+    this.ensureKeys();
+
     if (existing) {
       if (keyChangedWarning) existing.keyChangedWarning = true;
+      // If the existing session doesn't have an inbound receive chain for this peerEphemeralPublicKeyHex,
+      // or if this is a newly received ephemeral key, derive and attach the receive chain!
+      if (!existing.peerEphemeralPublicKeyHex || existing.peerEphemeralPublicKeyHex !== peerEphemeralPublicKeyHex) {
+        const inbound = initializeInboundSession(
+          this.signedPreKey!.privateKey,
+          this.identityKeys!.publicKey,
+          peerIdentityPublicKeyHex,
+          peerPreKeyPublicHex,
+          peerEphemeralPublicKeyHex,
+          conversationId,
+          peerUsername
+        );
+        existing.recvChainKey = inbound.recvChainKey;
+        existing.recvSeq = 0;
+        existing.seenRecvSeqs.clear();
+        existing.peerEphemeralPublicKeyHex = peerEphemeralPublicKeyHex;
+      }
       return { session: existing, keyChangedWarning };
     }
 
-    this.ensureKeys();
     const session = initializeInboundSession(
       this.signedPreKey!.privateKey,
       this.identityKeys!.publicKey,
@@ -201,6 +250,7 @@ export class KeyStore {
       conversationId,
       peerUsername
     );
+    session.peerEphemeralPublicKeyHex = peerEphemeralPublicKeyHex;
 
     if (keyChangedWarning) session.keyChangedWarning = true;
     this.sessions.set(conversationId, session);
