@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode: Crisp Porcelain with high-contrast slate typography */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --foreground-muted: 215 16% 40%;
+    --surface: 0 0% 100%;
+    --surface-raised: 210 30% 95%;
+    --border: 214 28% 88%;
+    --border-focus: 262 83% 58%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --accent-rose: 336 84% 57%;
+    --accent-emerald: 158 64% 38%;
+    --accent-amber: 38 92% 44%;
+    --accent-crimson: 0 84% 56%;
+  }
+
+  .dark {
+    /* Dark Mode: Deep Midnight Obsidian with soft glow highlights */
+    --background: 224 71% 4%;
+    --foreground: 210 40% 98%;
+    --foreground-muted: 215 20% 65%;
+    --surface: 224 45% 8%;
+    --surface-raised: 224 40% 12%;
+    --border: 224 25% 18%;
+    --border-focus: 262 83% 58%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 210 40% 98%;
+
+    --accent-rose: 336 84% 57%;
+    --accent-emerald: 158 64% 48%;
+    --accent-amber: 38 92% 50%;
+    --accent-crimson: 0 84% 60%;
+  }
+
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans min-h-screen antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Universal Accessible Focus Rings */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+}
+
+/* Restrained, Hardware-Accelerated Glassmorphism */
+.glass-panel {
+  background: hsl(var(--surface) / 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border) / 0.7);
+}
+
+.glass-card {
+  background: hsl(var(--surface-raised) / 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid hsl(var(--border) / 0.6);
+}
+
+/* Custom Minimalist Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--foreground-muted) / 0.5);
+}
+
+/* Skeleton Loading Shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--surface-raised)) 25%,
+    hsl(var(--border)) 50%,
+    hsl(var(--surface-raised)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+/* Reduced Motion Override for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
