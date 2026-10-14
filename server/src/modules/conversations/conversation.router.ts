@@ -10,3 +10,6 @@ conversationRouter.get('/:id/status', authenticate, ConversationController.getSt
 
 // 2. Delete conversation for both participants
 conversationRouter.delete('/:id', authenticate, csrfProtection, ConversationController.deleteConversation);
+
+// 3. Authoritative conversation initiation or reactivation (fresh 30m timer)
+conversationRouter.post('/initiate', authenticate, ConversationController.initiateConversation);

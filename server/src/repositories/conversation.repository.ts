@@ -86,6 +86,81 @@ export class ConversationRepository {
   }
 
   /**
+   * Authoritatively reactivate an existing conversation (if closed/expired) or create a fresh active record
+   */
+  public static async reopenOrCreate(
+    participantA: { id: string | Types.ObjectId; username: string },
+    participantB: { id: string | Types.ObjectId; username: string },
+    canonicalId: string,
+    currentTime: Date = new Date()
+  ): Promise<IConversation> {
+    const expiresAt = new Date(currentTime.getTime() + INACTIVITY_EXPIRY_MS);
+    if (isDatabaseConnected()) {
+      const existing = await ConversationModel.findOne({ canonicalId });
+      if (existing) {
+        existing.status = 'active';
+        existing.startedAt = currentTime;
+        existing.lastActivityAt = currentTime;
+        existing.expiresAt = expiresAt;
+        existing.closedAt = undefined;
+        existing.closedBy = undefined;
+        await existing.save();
+        logger.info({ canonicalId, expiresAt }, 'Existing conversation record reopened as active');
+        return existing;
+      }
+
+      const newConv = new ConversationModel({
+        canonicalId,
+        participantA: new Types.ObjectId(participantA.id),
+        participantB: new Types.ObjectId(participantB.id),
+        participantAUsername: participantA.username.toLowerCase(),
+        participantBUsername: participantB.username.toLowerCase(),
+        status: 'active',
+        startedAt: currentTime,
+        lastActivityAt: currentTime,
+        expiresAt,
+      });
+
+      await newConv.save();
+      logger.info({ canonicalId, expiresAt }, 'New authoritative conversation record initialized');
+      return newConv;
+    }
+
+    // In-memory fallback
+    const existingMem = inMemConversations.get(canonicalId);
+    if (existingMem) {
+      existingMem.status = 'active';
+      existingMem.startedAt = currentTime;
+      existingMem.lastActivityAt = currentTime;
+      existingMem.expiresAt = expiresAt;
+      existingMem.closedAt = undefined;
+      existingMem.closedBy = undefined;
+      logger.info({ canonicalId, expiresAt }, 'Existing in-mem conversation record reopened as active');
+      return existingMem;
+    }
+
+    const inMemDoc = {
+      _id: new Types.ObjectId(),
+      canonicalId,
+      participantA: new Types.ObjectId(participantA.id),
+      participantB: new Types.ObjectId(participantB.id),
+      participantAUsername: participantA.username.toLowerCase(),
+      participantBUsername: participantB.username.toLowerCase(),
+      status: 'active' as const,
+      startedAt: currentTime,
+      lastActivityAt: currentTime,
+      expiresAt,
+      save: async function () {
+        return this;
+      },
+    } as unknown as IConversation;
+
+    inMemConversations.set(canonicalId, inMemDoc);
+    logger.info({ canonicalId, expiresAt }, 'New in-mem conversation record initialized');
+    return inMemDoc;
+  }
+
+  /**
    * Find conversation by canonical ID
    */
   public static async findByCanonicalId(canonicalId: string): Promise<IConversation | null> {

@@ -177,7 +177,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           const data = await res.json();
           if (isMounted && data.success && data.conversation) {
             if (data.conversation.status === 'expired' || data.conversation.status === 'closed') {
-              onEndConversationRef.current(convId);
+              // Only end if this was an ongoing conversation with messages; do not auto-terminate fresh empty chats
+              if (messages.length > 0) {
+                onEndConversationRef.current(convId);
+              }
             }
           }
         }

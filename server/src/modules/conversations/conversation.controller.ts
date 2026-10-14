@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ConversationRepository } from '../../repositories/conversation.repository.js';
+import { UserRepository } from '../../repositories/user.repository.js';
 import { ConversationExpiryService } from '../../services/conversationExpiry.service.js';
 import { AppError } from '../../utils/appError.js';
 
@@ -108,4 +109,60 @@ export class ConversationController {
       next(err);
     }
   }
+
+  /**
+   * Authoritatively initiate or reactivate an active conversation between two users
+   */
+  public static async initiateConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+
+      const { recipientUsername, canonicalId: providedCanonicalId } = req.body;
+      if (!recipientUsername || typeof recipientUsername !== 'string') {
+        throw new AppError('Recipient username is required.', 400, 'MISSING_RECIPIENT');
+      }
+
+      const senderUsername = req.user.username.toLowerCase();
+      const target = recipientUsername.toLowerCase().trim();
+
+      if (senderUsername === target) {
+        throw new AppError('Cannot start a conversation with yourself.', 400, 'INVALID_PARTICIPANT');
+      }
+
+      const recipient = await UserRepository.findByUsername(target);
+      if (!recipient || recipient.status === 'deleted') {
+        throw new AppError('Recipient user not found.', 404, 'USER_NOT_FOUND');
+      }
+
+      const u1 = senderUsername.replace(/[^a-z0-9_]/g, '');
+      const u2 = target.replace(/[^a-z0-9_]/g, '');
+      const sorted = [u1, u2].sort();
+      const canonicalId = providedCanonicalId || `conv_${sorted[0]}_${sorted[1]}`;
+
+      const conv = await ConversationRepository.reopenOrCreate(
+        { id: req.user._id.toString(), username: senderUsername },
+        { id: recipient._id.toString(), username: target },
+        canonicalId
+      );
+
+      const remainingMs = Math.max(0, conv.expiresAt.getTime() - Date.now());
+
+      res.status(200).json({
+        success: true,
+        conversation: {
+          id: conv.canonicalId,
+          status: conv.status,
+          startedAt: conv.startedAt,
+          lastActivityAt: conv.lastActivityAt,
+          expiresAt: conv.expiresAt,
+          remainingSeconds: Math.floor(remainingMs / 1000),
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
+

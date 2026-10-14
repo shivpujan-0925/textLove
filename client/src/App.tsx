@@ -283,6 +283,22 @@ const MainContent: React.FC = () => {
       expiresAt: new Date(Date.now() + 30 * 60000).toISOString(),
     };
 
+    // Authoritatively reactivate/create conversation record on backend
+    try {
+      fetch(apiUrl('/api/v1/conversations/initiate'), {
+        method: 'POST',
+        headers: getAuthHeaders(
+          csrfToken
+            ? { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+            : { 'Content-Type': 'application/json' }
+        ),
+        body: JSON.stringify({ recipientUsername: cleanUsername, canonicalId }),
+        credentials: 'include',
+      }).catch(() => {});
+    } catch {
+      // Handled gracefully
+    }
+
     setConversations((prev) => [newConv, ...prev.filter((c) => c.id !== canonicalId)]);
     setSelectedConversationId(canonicalId);
     setMobileShowChat(true);

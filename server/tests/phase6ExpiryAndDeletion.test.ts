@@ -628,5 +628,40 @@ describe('Phase 6: Secure Conversation Expiry & Deletion Workflows', () => {
       clientA.disconnect();
       clientB.disconnect();
     });
+
+    it('authoritatively reactivates an expired or closed conversation when initiate is called', async () => {
+      const { user: userA, cookie: cookieA } = await createTestUserAndSession('alice', 'Alice Smith');
+      const { user: userB } = await createTestUserAndSession('bob', 'Bob Jones');
+
+      const canonicalId = 'alice:bob';
+
+      // Setup expired conversation
+      await ConversationRepository.getOrCreate(
+        { id: userA._id, username: 'alice' },
+        { id: userB._id, username: 'bob' },
+        canonicalId,
+        new Date(Date.now() - 40 * 60 * 1000)
+      );
+      await ConversationRepository.expire(canonicalId);
+
+      const before = await ConversationRepository.findByCanonicalId(canonicalId);
+      expect(before?.status).toBe('expired');
+
+      // Alice initiates a new chat with Bob
+      const res = await request(app)
+        .post('/api/v1/conversations/initiate')
+        .set('Cookie', [cookieA])
+        .send({ recipientUsername: 'bob', canonicalId });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.conversation.status).toBe('active');
+      expect(res.body.conversation.remainingSeconds).toBeGreaterThan(1700);
+
+      const after = await ConversationRepository.findByCanonicalId(canonicalId);
+      expect(after?.status).toBe('active');
+      expect(after?.closedBy).toBeUndefined();
+    });
   });
 });
+
