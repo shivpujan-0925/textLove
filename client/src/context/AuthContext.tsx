@@ -1,16 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '../types';
 import { KeyStore } from '../crypto/keyStore';
-import { apiUrl } from '../utils/api';
-
-const getAuthHeaders = (extraHeaders: Record<string, string> = {}): Record<string, string> => {
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem('textlove_session_token') : null;
-  const headers: Record<string, string> = { ...extraHeaders };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  return headers;
-};
+import { apiUrl, getAuthHeaders } from '../utils/api';
 
 export interface GoogleAccountDetails {
   id: string;

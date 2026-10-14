@@ -6,7 +6,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Search, Plus, UserPlus, Radio, Shield, Clock, Loader2, MessageSquarePlus, ShieldCheck } from 'lucide-react';
 import { PrivacyPolicyModal } from '../ui/PrivacyPolicyModal';
-import { apiUrl } from '../../utils/api';
+import { apiUrl, getAuthHeaders } from '../../utils/api';
 
 interface SidebarProps {
   currentUser: User;
@@ -51,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(apiUrl(`/api/v1/users/search?q=${encodeURIComponent(trimmed)}`), {
+          headers: getAuthHeaders(),
           credentials: 'include',
         });
         if (res.ok) {

@@ -3,7 +3,7 @@ import { Conversation, EphemeralMessage, User } from '../../types';
 import { KeyStore } from '../../crypto/keyStore';
 import { useSocket } from '../../context/useSocket';
 import { usePwa } from '../../context/usePwa';
-import { apiUrl } from '../../utils/api';
+import { apiUrl, getAuthHeaders } from '../../utils/api';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -150,19 +150,34 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return unsub;
   }, [conversation.id, conversation.peer.username, onTyping]);
 
-  // Check server-authoritative status on mount / reconnect
+  const hasVerifiedStatusRef = useRef<Record<string, boolean>>({});
+  const onEndConversationRef = useRef(onEndConversation);
+  onEndConversationRef.current = onEndConversation;
+
+  // Check server-authoritative status once per conversation mount / switch
   useEffect(() => {
     let isMounted = true;
+    const convId = conversation.id;
+    if (hasVerifiedStatusRef.current[convId]) {
+      return;
+    }
+    hasVerifiedStatusRef.current[convId] = true;
+
     const verifyStatus = async () => {
       try {
-        const res = await fetch(apiUrl(`/api/v1/conversations/${encodeURIComponent(conversation.id)}/status`), {
+        const res = await fetch(apiUrl(`/api/v1/conversations/${encodeURIComponent(convId)}/status`), {
+          headers: getAuthHeaders(),
           credentials: 'include',
         });
+        if (res.status === 401 || res.status === 404) {
+          // If unauthorized or not found yet on server, exit cleanly without retry spam
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           if (isMounted && data.success && data.conversation) {
             if (data.conversation.status === 'expired' || data.conversation.status === 'closed') {
-              onEndConversation(conversation.id);
+              onEndConversationRef.current(convId);
             }
           }
         }
@@ -174,7 +189,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [conversation.id, onEndConversation]);
+  }, [conversation.id]);
 
   // Live countdown timer for 30m inactivity auto-expiry with dynamic warning states
   useEffect(() => {
@@ -186,14 +201,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       const secs = Math.floor((diff % 60000) / 1000);
       setRemainingTime(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
       if (diff <= 0) {
-        onEndConversation(conversation.id);
+        onEndConversationRef.current(conversation.id);
       }
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [conversation.expiresAt, conversation.id, onEndConversation]);
+  }, [conversation.expiresAt, conversation.id]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;

@@ -4,7 +4,7 @@ import { useAuth } from './useAuth';
 import { KeyStore } from '../crypto/keyStore';
 import { ConnectionStatus, EphemeralMessage } from '../types';
 import { getCanonicalConversationId } from '../utils/conversation';
-import { apiUrl, SOCKET_URL } from '../utils/api';
+import { apiUrl, SOCKET_URL, getAuthHeaders } from '../utils/api';
 
 export interface PublicKeyBundle {
   identityPublicKey: string;
@@ -65,12 +65,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
-      const token = typeof window !== 'undefined' ? sessionStorage.getItem('textlove_session_token') : null;
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const res = await fetch(apiUrl(`/api/v1/keys/${encodeURIComponent(username)}`), {
-        headers,
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       if (!res.ok) {
@@ -141,15 +137,21 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setConnectionStatus('connected');
     });
 
-    // Presence events
+    // Presence events: update state only if values actually changed to prevent render storms
     newSocket.on('presence:batch', (batch: { username: string; online: boolean }[]) => {
       if (Array.isArray(batch)) {
         setPresenceMap((prev) => {
+          let hasDiff = false;
           const next = { ...prev };
           for (const item of batch) {
-            next[item.username.toLowerCase()] = item.online;
+            const u = item.username.toLowerCase();
+            const online = Boolean(item.online);
+            if (next[u] !== online) {
+              next[u] = online;
+              hasDiff = true;
+            }
           }
-          return next;
+          return hasDiff ? next : prev;
         });
       }
     });
@@ -157,11 +159,15 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     newSocket.on('presence:update', (item: { username: string; online: boolean }) => {
       if (item?.username) {
         const u = item.username.toLowerCase();
-        setPresenceMap((prev) => ({
-          ...prev,
-          [u]: Boolean(item.online),
-        }));
-        if (item.online) {
+        const online = Boolean(item.online);
+        setPresenceMap((prev) => {
+          if (prev[u] === online) return prev;
+          return {
+            ...prev,
+            [u]: online,
+          };
+        });
+        if (online) {
           peerKeyCache.current.delete(u);
         }
       }

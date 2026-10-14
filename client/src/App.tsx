@@ -18,7 +18,7 @@ import {
 } from './components/auth/GoogleAccountChooserModal';
 import { Conversation, EphemeralMessage, User } from './types';
 import { getCanonicalConversationId } from './utils/conversation';
-import { apiUrl } from './utils/api';
+import { apiUrl, getAuthHeaders } from './utils/api';
 import { Button } from './components/ui/Button';
 import { Radio, WifiOff, RefreshCw } from 'lucide-react';
 
@@ -336,30 +336,30 @@ const MainContent: React.FC = () => {
     [handleSendMessage]
   );
 
-  const handleEndConversation = (conversationId: string) => {
-    const target = conversations.find((c) => c.id === conversationId);
-    if (target) {
-      terminateConversation(conversationId, target.peer.username);
-    }
-    // Idempotent REST deletion to guarantee authoritative server invalidation
-    if (csrfToken) {
+  const handleEndConversation = useCallback(
+    (conversationId: string) => {
+      const target = conversations.find((c) => c.id === conversationId);
+      if (target) {
+        terminateConversation(conversationId, target.peer.username);
+      }
+      // Idempotent REST deletion to guarantee authoritative server invalidation
       fetch(apiUrl(`/api/v1/conversations/${encodeURIComponent(conversationId)}`), {
         method: 'DELETE',
-        headers: {
-          'X-CSRF-Token': csrfToken,
-        },
+        headers: getAuthHeaders(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
         credentials: 'include',
       }).catch(() => {});
-    }
-    setConversations((prev) => prev.filter((c) => c.id !== conversationId));
-    setMessages((prev) => prev.filter((m) => m.conversationId !== conversationId));
-    setSelectedConversationId(null);
-    setMobileShowChat(false);
-    toast.warning(
-      'Conversation Terminated',
-      'Session permanently closed. All messages and ephemeral keys wiped from memory on both devices.'
-    );
-  };
+
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      setMessages((prev) => prev.filter((m) => m.conversationId !== conversationId));
+      setSelectedConversationId(null);
+      setMobileShowChat(false);
+      toast.warning(
+        'Conversation Terminated',
+        'Session permanently closed. All messages and ephemeral keys wiped from memory on both devices.'
+      );
+    },
+    [conversations, terminateConversation, csrfToken, toast]
+  );
 
   const handleGoogleSignInClick = async () => {
     try {

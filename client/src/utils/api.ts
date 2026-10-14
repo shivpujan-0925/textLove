@@ -27,3 +27,16 @@ export function apiUrl(endpoint: string): string {
  * Empty/undefined connects to window.location.origin.
  */
 export const SOCKET_URL: string | undefined = API_BASE_URL || undefined;
+
+/**
+ * Helper to build headers with Authorization Bearer token if session exists.
+ * Essential for cross-origin deployments where third-party cookies are blocked by browsers.
+ */
+export function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('textlove_session_token') : null;
+  const headers: Record<string, string> = { ...extraHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
