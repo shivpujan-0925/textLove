@@ -40,10 +40,9 @@ describe('textLove Client Application', () => {
     const exploreBtn = screen.getByRole('button', { name: /Explore Chat Layout/i });
     fireEvent.click(exploreBtn);
 
-    // Chat view elements should now be visible (Bob Martinez is in sidebar and chat header)
-    expect(screen.getAllByText(/Bob Martinez/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/@bob_privacy/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole('button', { name: /Safety Number/i })).toBeInTheDocument();
+    // Chat view elements should now be visible with clean empty state and sidebar
+    expect(screen.getByText(/No active sessions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Welcome to/i)).toBeInTheDocument();
   });
 
   it('can open and close settings modal', () => {

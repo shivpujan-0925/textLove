@@ -289,7 +289,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   return (
     <main className="flex-1 h-full min-h-0 min-w-0 flex flex-col bg-background overflow-hidden relative">
       {/* Chat Top Header */}
-      <header className="h-16 px-4 sm:px-6 glass-panel border-b border-border/80 flex items-center justify-between z-10 flex-shrink-0">
+      <header className="h-14 sm:h-16 px-3 sm:px-6 glass-panel border-b border-border/80 flex items-center justify-between z-10 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           {onBackToSidebar && (
             <Button
@@ -508,8 +508,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       </div>
 
       {/* Message Input Footer with Emoji Picker */}
-      <footer className="p-3 sm:p-4 glass-panel border-t border-border/80 flex-shrink-0">
-        <form onSubmit={handleSend} className="flex items-center gap-2 max-w-4xl mx-auto">
+      <footer className="p-2 sm:p-4 glass-panel border-t border-border/80 flex-shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <form onSubmit={handleSend} className="flex items-center gap-1.5 sm:gap-2 max-w-4xl mx-auto w-full min-w-0">
           {/* Emoji Picker */}
           <EmojiPicker
             onSelectEmoji={handleSelectEmoji}
@@ -527,13 +527,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 : 'Peer is offline. Live messaging only.'
             }
             disabled={!isPeerOnline || !isOnline}
-            className="flex-1 h-11"
+            className="flex-1 h-10 sm:h-11 text-xs sm:text-sm"
           />
 
           <Button
             type="submit"
             disabled={!inputText.trim() || !isPeerOnline || !isOnline}
-            className="h-11 px-5 gap-2"
+            className="h-10 sm:h-11 px-3 sm:px-5 gap-1.5 sm:gap-2 flex-shrink-0"
           >
             <Send className="w-4 h-4" />
             <span className="hidden sm:inline">Send</span>

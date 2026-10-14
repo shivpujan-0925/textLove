@@ -20,6 +20,7 @@ interface NavbarProps {
   currentView?: 'landing' | 'chat';
   onNavigate?: (view: 'landing' | 'chat') => void;
   onOpenSettings: () => void;
+  onLogout?: () => void;
   isInstallable?: boolean;
   onInstallPwa?: () => void;
 }
@@ -28,6 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentView = 'chat',
   onNavigate = () => {},
   onOpenSettings,
+  onLogout,
   isInstallable,
   onInstallPwa,
 }) => {
@@ -39,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const handleInstall = onInstallPwa ?? pwa.installPwa;
 
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b border-border/80 px-4 sm:px-6 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-40 w-full glass-panel border-b border-border/80 px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between flex-shrink-0">
       {/* Brand Logo */}
       <div className="flex items-center gap-3">
         <button
@@ -178,6 +180,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               size="icon"
               onClick={async () => {
                 await logout();
+                if (onLogout) onLogout();
                 onNavigate('landing');
               }}
               title="Log out and revoke session"

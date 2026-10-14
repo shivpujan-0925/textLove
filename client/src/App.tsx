@@ -32,21 +32,7 @@ const FALLBACK_USER: User = {
   hasRegisteredKeys: false,
 };
 
-const INITIAL_CONVERSATIONS: Conversation[] = [
-  {
-    id: 'conv_1',
-    peer: {
-      id: 'usr_2',
-      username: 'bob_privacy',
-      displayName: 'Bob Martinez',
-      isOnline: false,
-    },
-    status: 'active',
-    startedAt: new Date(Date.now() - 5 * 60000).toISOString(),
-    lastActivityAt: new Date(Date.now() - 15000).toISOString(),
-    expiresAt: new Date(Date.now() + 25 * 60000).toISOString(),
-  },
-];
+const INITIAL_CONVERSATIONS: Conversation[] = [];
 
 const INITIAL_MESSAGES: EphemeralMessage[] = [];
 
@@ -73,11 +59,29 @@ const MainContent: React.FC = () => {
   const [isAccountChooserOpen, setIsAccountChooserOpen] = useState(false);
   const [oauthParams, setOauthParams] = useState<GoogleAuthUrlResponse | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>('conv_1');
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<EphemeralMessage[]>(INITIAL_MESSAGES);
   const [mobileShowChat, setMobileShowChat] = useState(false);
 
   const activeUser: User = authUser || FALLBACK_USER;
+
+  const handleLogout = useCallback(() => {
+    setConversations([]);
+    setMessages([]);
+    setSelectedConversationId(null);
+    setMobileShowChat(false);
+    setCurrentView('landing');
+  }, []);
+
+  // Wipe conversation and message states immediately when logged out
+  useEffect(() => {
+    if (!authUser) {
+      setConversations([]);
+      setMessages([]);
+      setSelectedConversationId(null);
+      setMobileShowChat(false);
+    }
+  }, [authUser]);
 
   // Automatically switch to chat view when user is logged in
   useEffect(() => {
@@ -388,11 +392,12 @@ const MainContent: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-background">
+    <div className="flex flex-col h-full h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-background">
       <Navbar
         currentView={currentView}
         onNavigate={setCurrentView}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onLogout={handleLogout}
         isInstallable={isInstallable}
         onInstallPwa={installPwa}
       />
@@ -507,7 +512,7 @@ const MainContent: React.FC = () => {
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        onLogout={() => setCurrentView('landing')}
+        onLogout={handleLogout}
       />
 
       <GoogleAccountChooserModal

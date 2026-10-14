@@ -47,8 +47,19 @@
     scrollbar-color: hsl(var(--border)) transparent;
   }
 
+  html,
+  body,
+  #root {
+    height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
   body {
-    @apply bg-background text-foreground font-sans min-h-screen antialiased;
+    @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
