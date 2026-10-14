@@ -24,17 +24,38 @@ export const createApp = (): Express => {
   app.use(securityHeaders);
 
   // 3. Explicit CORS configuration
-  const allowedOrigins = env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+  const allowedOrigins = env.CORS_ORIGIN.split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Allow requests with no origin (e.g. mobile apps or curl) in development/test
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          logger.warn({ origin }, 'Blocked by CORS policy');
-          callback(new Error('Blocked by CORS policy'));
+        // Allow requests with no origin (e.g. mobile apps, curl, or server-to-server)
+        if (!origin) {
+          return callback(null, true);
         }
+
+        const cleanOrigin = origin.replace(/\/+$/, '');
+
+        // 1. Direct or wildcard match
+        if (allowedOrigins.includes(cleanOrigin) || allowedOrigins.includes('*')) {
+          return callback(null, true);
+        }
+
+        // 2. Allow any .vercel.app deployment if a vercel domain or preview is in allowedOrigins
+        const allowsVercel = allowedOrigins.some((o) => o.includes('.vercel.app'));
+        if (allowsVercel && cleanOrigin.endsWith('.vercel.app')) {
+          return callback(null, true);
+        }
+
+        // 3. Allow localhost in development
+        if (cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1')) {
+          return callback(null, true);
+        }
+
+        logger.warn({ origin: cleanOrigin, allowed: allowedOrigins }, 'Blocked by CORS policy');
+        callback(null, false);
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

@@ -17,11 +17,27 @@ interface AuthenticatedSocket extends Socket {
 }
 
 export function initSocketServer(httpServer: HttpServer): Server {
+  const allowedOrigins = env.CORS_ORIGIN.split(',')
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+
   const io = new Server(httpServer, {
     cors: {
-      origin: env.CORS_ORIGIN.includes(',')
-        ? env.CORS_ORIGIN.split(',').map((o) => o.trim())
-        : env.CORS_ORIGIN,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        const cleanOrigin = origin.replace(/\/+$/, '');
+        if (allowedOrigins.includes(cleanOrigin) || allowedOrigins.includes('*')) {
+          return callback(null, true);
+        }
+        const allowsVercel = allowedOrigins.some((o) => o.includes('.vercel.app'));
+        if (allowsVercel && cleanOrigin.endsWith('.vercel.app')) {
+          return callback(null, true);
+        }
+        if (cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1')) {
+          return callback(null, true);
+        }
+        callback(null, false);
+      },
       credentials: true,
       methods: ['GET', 'POST'],
     },
