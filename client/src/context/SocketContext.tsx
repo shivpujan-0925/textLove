@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { KeyStore } from '../crypto/keyStore';
 import { ConnectionStatus, EphemeralMessage } from '../types';
 import { getCanonicalConversationId } from '../utils/conversation';
+import { apiUrl, SOCKET_URL } from '../utils/api';
 
 export interface PublicKeyBundle {
   identityPublicKey: string;
@@ -64,7 +65,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
-      const res = await fetch(`/api/v1/keys/${encodeURIComponent(username)}`, {
+      const res = await fetch(apiUrl(`/api/v1/keys/${encodeURIComponent(username)}`), {
         credentials: 'include',
       });
       if (!res.ok) {
@@ -94,7 +95,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setConnectionStatus('connecting');
 
-    const newSocket = io({
+    const newSocket = io(SOCKET_URL, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,

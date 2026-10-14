@@ -20,7 +20,7 @@ export class AuthController {
       res.cookie('textlove_oauth_state', oauthPayload, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: 'lax', // Lax required for top-level OAuth redirect flow
+        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-domain Vercel <-> Render
         maxAge: 10 * 60 * 1000,
         path: '/',
       });
@@ -77,13 +77,17 @@ export class AuthController {
       const result = await AuthService.authenticateGoogleUser(idToken, ipHash, userAgent);
 
       // Clear the temporary state cookie
-      res.clearCookie('textlove_oauth_state', { path: '/' });
+      res.clearCookie('textlove_oauth_state', {
+        path: '/',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+      });
 
       // Set the hardened session cookie (7 days)
       res.cookie('textlove_session', result.rawToken, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: 'lax',
+        sameSite: isProduction ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
       });
@@ -128,7 +132,11 @@ export class AuthController {
         await AuthService.logout(req.sessionToken);
       }
 
-      res.clearCookie('textlove_session', { path: '/' });
+      res.clearCookie('textlove_session', {
+        path: '/',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
+      });
 
       res.status(200).json({
         success: true,

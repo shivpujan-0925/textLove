@@ -18,6 +18,7 @@ import {
 } from './components/auth/GoogleAccountChooserModal';
 import { Conversation, EphemeralMessage, User } from './types';
 import { getCanonicalConversationId } from './utils/conversation';
+import { apiUrl } from './utils/api';
 import { Button } from './components/ui/Button';
 import { Radio, WifiOff, RefreshCw } from 'lucide-react';
 
@@ -331,7 +332,7 @@ const MainContent: React.FC = () => {
     }
     // Idempotent REST deletion to guarantee authoritative server invalidation
     if (csrfToken) {
-      fetch(`/api/v1/conversations/${encodeURIComponent(conversationId)}`, {
+      fetch(apiUrl(`/api/v1/conversations/${encodeURIComponent(conversationId)}`), {
         method: 'DELETE',
         headers: {
           'X-CSRF-Token': csrfToken,

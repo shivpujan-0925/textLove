@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { User } from '../types';
 import { KeyStore } from '../crypto/keyStore';
+import { apiUrl } from '../utils/api';
 
 export interface GoogleAccountDetails {
   id: string;
@@ -45,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         KeyStore.getInstance().initForUser(targetUsername);
       }
       const bundle = KeyStore.getInstance().ensureKeys();
-      const res = await fetch('/api/v1/keys/register', {
+      const res = await fetch(apiUrl('/api/v1/keys/register'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 1. Check existing session on load
   const checkAuth = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/auth/me', { credentials: 'include' });
+      const res = await fetch(apiUrl('/api/v1/auth/me'), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setUser({
@@ -94,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 2. Google OAuth URL fetch
   const loginWithGoogle = async (): Promise<GoogleAuthUrlResponse | null> => {
     try {
-      const res = await fetch('/api/v1/auth/google/url', { credentials: 'include' });
+      const res = await fetch(apiUrl('/api/v1/auth/google/url'), { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         return data;
@@ -115,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Only fetch URL if state was not already obtained
       if (!state) {
-        const urlRes = await fetch('/api/v1/auth/google/url', { credentials: 'include' });
+        const urlRes = await fetch(apiUrl('/api/v1/auth/google/url'), { credentials: 'include' });
         if (!urlRes.ok) {
           const errData = await urlRes.json().catch(() => ({}));
           throw new Error(errData.error?.message || 'Failed to initiate OAuth session with backend.');
@@ -130,7 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         account.avatarUrl ? ':' + encodeURIComponent(account.avatarUrl) : ''
       }`;
 
-      const callbackRes = await fetch('/api/v1/auth/google/callback', {
+      const callbackRes = await fetch(apiUrl('/api/v1/auth/google/callback'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -167,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async (code: string, state: string) => {
       try {
         setIsLoading(true);
-        const res = await fetch('/api/v1/auth/google/callback', {
+        const res = await fetch(apiUrl('/api/v1/auth/google/callback'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -225,7 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       if (csrfToken) {
-        await fetch('/api/v1/auth/logout', {
+        await fetch(apiUrl('/api/v1/auth/logout'), {
           method: 'POST',
           headers: {
             'X-CSRF-Token': csrfToken,
@@ -244,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUsername = async (newUsername: string) => {
     if (!csrfToken) throw new Error('CSRF token missing');
 
-    const res = await fetch('/api/v1/users/username', {
+    const res = await fetch(apiUrl('/api/v1/users/username'), {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -266,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (displayName: string) => {
     if (!csrfToken) throw new Error('CSRF token missing');
 
-    const res = await fetch('/api/v1/users/profile', {
+    const res = await fetch(apiUrl('/api/v1/users/profile'), {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -291,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const formData = new FormData();
     formData.append('avatar', file);
 
-    const res = await fetch('/api/v1/users/avatar', {
+    const res = await fetch(apiUrl('/api/v1/users/avatar'), {
       method: 'POST',
       headers: {
         'X-CSRF-Token': csrfToken,
@@ -312,7 +313,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteAccount = async (confirmation: string = 'DELETE') => {
     if (!csrfToken) throw new Error('CSRF token missing');
 
-    const res = await fetch('/api/v1/users/me', {
+    const res = await fetch(apiUrl('/api/v1/users/me'), {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

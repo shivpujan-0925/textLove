@@ -3,6 +3,7 @@ import { Conversation, EphemeralMessage, User } from '../../types';
 import { KeyStore } from '../../crypto/keyStore';
 import { useSocket } from '../../context/useSocket';
 import { usePwa } from '../../context/usePwa';
+import { apiUrl } from '../../utils/api';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -153,7 +154,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     let isMounted = true;
     const verifyStatus = async () => {
       try {
-        const res = await fetch(`/api/v1/conversations/${encodeURIComponent(conversation.id)}/status`, {
+        const res = await fetch(apiUrl(`/api/v1/conversations/${encodeURIComponent(conversation.id)}/status`), {
           credentials: 'include',
         });
         if (res.ok) {
