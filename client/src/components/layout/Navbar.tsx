@@ -21,6 +21,7 @@ interface NavbarProps {
   onNavigate?: (view: 'landing' | 'chat') => void;
   onOpenSettings: () => void;
   onLogout?: () => void;
+  onSignIn?: () => void;
   isInstallable?: boolean;
   onInstallPwa?: () => void;
 }
@@ -30,6 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate = () => {},
   onOpenSettings,
   onLogout,
+  onSignIn,
   isInstallable,
   onInstallPwa,
 }) => {
@@ -77,8 +79,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Navigation & Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* View Switcher Button (shown on landing page) */}
-        {currentView === 'landing' && (
+        {/* View Switcher Button (shown on landing page ONLY when authenticated) */}
+        {currentView === 'landing' && user && (
           <Button
             variant="primary"
             size="sm"
@@ -87,6 +89,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <MessageSquare className="w-4 h-4" />
             <span className="hidden sm:inline">Open Chat</span>
+          </Button>
+        )}
+
+        {/* Quick Sign In button in navbar when not authenticated */}
+        {currentView === 'landing' && !user && onSignIn && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={onSignIn}
+            className="text-xs h-8 px-3"
+          >
+            <span>Sign In</span>
           </Button>
         )}
 

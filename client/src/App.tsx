@@ -16,21 +16,11 @@ import {
   GoogleAccountChooserModal,
   GoogleAccountChoice,
 } from './components/auth/GoogleAccountChooserModal';
-import { Conversation, EphemeralMessage, User } from './types';
+import { Conversation, EphemeralMessage } from './types';
 import { getCanonicalConversationId } from './utils/conversation';
 import { apiUrl, getAuthHeaders } from './utils/api';
 import { Button } from './components/ui/Button';
 import { Radio, WifiOff, RefreshCw } from 'lucide-react';
-
-// Mock fallback user for unauthenticated preview
-const FALLBACK_USER: User = {
-  id: 'usr_preview',
-  username: 'guest_user',
-  displayName: 'Guest User',
-  email: 'guest@example.com',
-  isOnline: true,
-  hasRegisteredKeys: false,
-};
 
 const INITIAL_CONVERSATIONS: Conversation[] = [];
 
@@ -62,8 +52,6 @@ const MainContent: React.FC = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<EphemeralMessage[]>(INITIAL_MESSAGES);
   const [mobileShowChat, setMobileShowChat] = useState(false);
-
-  const activeUser: User = authUser || FALLBACK_USER;
 
   const handleLogout = useCallback(() => {
     setConversations([]);
@@ -242,8 +230,12 @@ const MainContent: React.FC = () => {
     username: string,
     peerInfo?: { displayName?: string; avatarUrl?: string }
   ) => {
+    if (!authUser) {
+      handleGoogleSignInClick();
+      return;
+    }
     const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
-    const canonicalId = getCanonicalConversationId(activeUser.username, cleanUsername);
+    const canonicalId = getCanonicalConversationId(authUser.username, cleanUsername);
     const existing = conversations.find(
       (c) => c.id === canonicalId || c.peer.username.toLowerCase() === cleanUsername
     );
@@ -307,7 +299,7 @@ const MainContent: React.FC = () => {
 
   const handleSendMessage = useCallback(
     async (text: string) => {
-      if (!activeConversation) return;
+      if (!activeConversation || !authUser) return;
 
       const recipient = activeConversation.peer.username;
       const convId = activeConversation.id;
@@ -323,7 +315,7 @@ const MainContent: React.FC = () => {
         const failedMsg: EphemeralMessage = {
           id: `msg_failed_${Date.now()}`,
           conversationId: convId,
-          senderUsername: activeUser.username,
+          senderUsername: authUser.username,
           text,
           timestamp: Date.now(),
           status: 'FAILED_OFFLINE',
@@ -340,7 +332,7 @@ const MainContent: React.FC = () => {
         );
       }
     },
-    [activeConversation, sendEncryptedMessage, activeUser.username, toast]
+    [activeConversation, sendEncryptedMessage, authUser?.username, toast]
   );
 
   const handleRetryMessage = useCallback(
@@ -411,7 +403,14 @@ const MainContent: React.FC = () => {
     <div className="flex flex-col h-full h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-background">
       <Navbar
         currentView={currentView}
-        onNavigate={setCurrentView}
+        onNavigate={(view) => {
+          if (view === 'chat' && !authUser) {
+            handleGoogleSignInClick();
+          } else {
+            setCurrentView(view);
+          }
+        }}
+        onSignIn={handleGoogleSignInClick}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onLogout={handleLogout}
         isInstallable={isInstallable}
@@ -477,10 +476,13 @@ const MainContent: React.FC = () => {
       )}
 
       <div className="flex-1 overflow-hidden relative min-h-0">
-        {currentView === 'landing' ? (
+        {currentView === 'landing' || !authUser ? (
           <div className="h-full overflow-y-auto">
             <LandingPage
-              onEnterChat={() => setCurrentView('chat')}
+              onEnterChat={() => {
+                if (authUser) setCurrentView('chat');
+                else handleGoogleSignInClick();
+              }}
               onGoogleSignInClick={handleGoogleSignInClick}
             />
           </div>
@@ -493,7 +495,7 @@ const MainContent: React.FC = () => {
               }`}
             >
               <Sidebar
-                currentUser={activeUser}
+                currentUser={authUser}
                 conversations={liveConversations}
                 selectedConversationId={selectedConversationId}
                 onSelectConversation={handleSelectConversation}
@@ -510,7 +512,7 @@ const MainContent: React.FC = () => {
               {activeConversation ? (
                 <ChatArea
                   conversation={activeConversation}
-                  currentUser={activeUser}
+                  currentUser={authUser}
                   messages={messages.filter((m) => m.conversationId === activeConversation.id)}
                   onSendMessage={handleSendMessage}
                   onRetryMessage={handleRetryMessage}

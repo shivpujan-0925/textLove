@@ -73,26 +73,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       if (res.ok) {
         const data = await res.json();
-        setUser({
-          id: data.user.id,
-          username: data.user.username,
-          displayName: data.user.displayName,
-          avatarUrl: data.user.avatarUrl,
-          isOnline: true,
-          hasRegisteredKeys: data.user.hasRegisteredKeys,
-          lastUsernameChangedAt: data.user.lastUsernameChangedAt,
-          lastAvatarChangedAt: data.user.lastAvatarChangedAt,
-        });
-        setCsrfToken(data.csrfToken);
-        await KeyStore.getInstance().initForUserAsync(data.user.username);
-        registerE2EEKeys(data.csrfToken, data.user.username);
+        if (data.user) {
+          setUser({
+            id: data.user.id,
+            username: data.user.username,
+            displayName: data.user.displayName,
+            avatarUrl: data.user.avatarUrl,
+            isOnline: true,
+            hasRegisteredKeys: data.user.hasRegisteredKeys,
+            lastUsernameChangedAt: data.user.lastUsernameChangedAt,
+            lastAvatarChangedAt: data.user.lastAvatarChangedAt,
+          });
+          setCsrfToken(data.csrfToken);
+          await KeyStore.getInstance().initForUserAsync(data.user.username);
+          registerE2EEKeys(data.csrfToken, data.user.username);
+        } else {
+          setUser((prev) => (prev ? prev : null));
+          setCsrfToken((prev) => (prev ? prev : null));
+        }
       } else {
-        setUser(null);
-        setCsrfToken(null);
+        setUser((prev) => (prev ? prev : null));
+        setCsrfToken((prev) => (prev ? prev : null));
       }
     } catch {
-      setUser(null);
-      setCsrfToken(null);
+      setUser((prev) => (prev ? prev : null));
+      setCsrfToken((prev) => (prev ? prev : null));
     } finally {
       setIsLoading(false);
     }

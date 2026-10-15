@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import App from '../src/App';
 
 describe('textLove Client Application', () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     // Mock fetch for backend health check
     global.fetch = vi.fn().mockImplementation(() =>
       Promise.resolve({
@@ -28,20 +29,76 @@ describe('textLove Client Application', () => {
     });
   });
 
-  it('renders textLove branding and hero text on landing page', () => {
+  const setupMockAuth = () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/v1/auth/google/url')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              authUrl: 'https://accounts.google.com/o/oauth2/v2/auth?prompt=select_account',
+              state: 'mock_state_123',
+              isMock: true,
+            }),
+        });
+      }
+      if (url.includes('/api/v1/auth/google/callback')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              user: {
+                id: 'usr_bob_202',
+                username: 'bob_martinez',
+                displayName: 'Bob Martinez',
+                avatarUrl: undefined,
+                hasRegisteredKeys: false,
+              },
+              csrfToken: 'csrf_mock_token_777',
+            }),
+        });
+      }
+      if (url.includes('/api/v1/auth/me')) {
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: () => Promise.resolve({ error: { code: 'UNAUTHORIZED' } }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ status: 'healthy' }),
+      });
+    });
+  };
+
+  const signInAsBob = async () => {
+    setupMockAuth();
+    render(<App />);
+
+    const googleBtn = screen.getByRole('button', { name: /Sign in with Google/i });
+    fireEvent.click(googleBtn);
+
+    expect(await screen.findByText(/Choose an account to continue to/i)).toBeInTheDocument();
+    const bobBtn = screen.getByRole('button', { name: /Bob Martinez/i });
+    fireEvent.click(bobBtn);
+
+    expect(await screen.findByText(/Signed in as Bob Martinez/i)).toBeInTheDocument();
+  };
+
+  it('renders textLove branding and hero text on landing page without unauthenticated explore feature', () => {
     render(<App />);
     expect(screen.getByRole('button', { name: /textLove Home/i })).toBeInTheDocument();
     expect(screen.getByText(/Live conversations that leave/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sign in with Google/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeInTheDocument();
+    // Critical assertion: Unauthenticated "Explore Chat Layout" must be removed
+    expect(screen.queryByText(/Explore Chat Layout/i)).not.toBeInTheDocument();
   });
 
-  it('switches to the chat interface when "Open Chat" or "Explore Chat Layout" is clicked', () => {
-    render(<App />);
-    const exploreBtn = screen.getByRole('button', { name: /Explore Chat Layout/i });
-    fireEvent.click(exploreBtn);
-
-    // Chat view elements should now be visible with clean empty state and sidebar
-    expect(screen.getByText(/No active sessions/i)).toBeInTheDocument();
+  it('switches to the chat interface only after signing in', async () => {
+    await signInAsBob();
+    expect(await screen.findByText(/No active sessions/i)).toBeInTheDocument();
     expect(screen.getByText(/Welcome to/i)).toBeInTheDocument();
   });
 
@@ -83,54 +140,17 @@ describe('textLove Client Application', () => {
     expect(screen.getByText(/Are you certain you wish to permanently delete your account/i)).toBeInTheDocument();
   });
 
-  it('allows searching users in the sidebar', () => {
-    render(<App />);
-    const exploreBtn = screen.getByRole('button', { name: /Explore Chat Layout/i });
-    fireEvent.click(exploreBtn);
+  it('allows searching users in the sidebar once signed in', async () => {
+    await signInAsBob();
 
-    const searchInput = screen.getByPlaceholderText(/Search by username or name.../i);
+    const searchInput = await screen.findByPlaceholderText(/Search by username or name.../i);
     expect(searchInput).toBeInTheDocument();
-    fireEvent.change(searchInput, { target: { value: 'bob' } });
-    expect(searchInput).toHaveValue('bob');
+    fireEvent.change(searchInput, { target: { value: 'alice' } });
+    expect(searchInput).toHaveValue('alice');
   });
 
   it('clicking "Sign in with Google" opens the Google Account Chooser and allows choosing Bob', async () => {
-    // Mock fetch for Google OAuth URL and callback
-    global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('/api/v1/auth/google/url')) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              authUrl: 'https://accounts.google.com/o/oauth2/v2/auth?prompt=select_account',
-              state: 'mock_state_123',
-              isMock: true,
-            }),
-        });
-      }
-      if (url.includes('/api/v1/auth/google/callback')) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              success: true,
-              user: {
-                id: 'usr_bob_202',
-                username: 'bob_martinez',
-                displayName: 'Bob Martinez',
-                avatarUrl: undefined,
-                hasRegisteredKeys: false,
-              },
-              csrfToken: 'csrf_mock_token_777',
-            }),
-        });
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ status: 'healthy' }),
-      });
-    });
-
+    setupMockAuth();
     render(<App />);
 
     // Click "Sign in with Google"
