@@ -12,7 +12,7 @@ export const EmptyChatState: React.FC = () => {
         </div>
 
         <h2 className="text-2xl font-bold tracking-tight text-foreground font-brand">
-          Welcome to <span className="font-semibold">text</span><span className="font-extrabold bg-gradient-to-r from-primary to-accent-rose bg-clip-text text-transparent">Love</span>
+          Welcome to <span className="font-semibold text-[#185FA5] dark:text-[#5BA2E6]">text</span><span className="font-extrabold bg-gradient-to-r from-[#E04870] to-[#FF6B8E] dark:from-[#FF6B8E] dark:to-[#FFA0B6] bg-clip-text text-transparent">Love</span>
         </h2>
         <p className="text-xs text-foreground-muted mt-2 leading-relaxed max-w-sm">
           A minimalist, live-only, privacy-first messaging sanctuary. No message databases. No stored histories. Absolute discretion.

@@ -95,7 +95,7 @@ describe('Phase 9: PWA Capabilities & Strict Offline Privacy Policy', () => {
       expect(manifestContent.short_name).toBe('textLove');
       expect(manifestContent.display).toBe('standalone');
       expect(manifestContent.start_url).toBe('/');
-      expect(manifestContent.theme_color).toBe('#8B5CF6');
+      expect(manifestContent.theme_color).toBe('#185FA5');
       expect(manifestContent.background_color).toBe('#090A0F');
       expect(manifestContent.icons.length).toBeGreaterThanOrEqual(3);
 

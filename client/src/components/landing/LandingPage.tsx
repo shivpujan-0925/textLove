@@ -51,7 +51,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </h1>
 
         <p className="mt-6 text-base sm:text-lg text-foreground-muted max-w-2xl leading-relaxed">
-          <strong>textLove</strong> is a modern, privacy-first one-to-one web messenger. No message database. No store-and-forward queues. Both users must be online to chat, and all memory state vanishes after 30 minutes of inactivity.
+          <strong className="font-semibold text-[#185FA5] dark:text-[#5BA2E6]">text<span className="font-extrabold text-[#E04870] dark:text-[#FF6B8E]">Love</span></strong> is a modern, privacy-first one-to-one web messenger. No message database. No store-and-forward queues. Both users must be online to chat, and all memory state vanishes after 30 minutes of inactivity.
         </p>
 
         {/* CTA Action Buttons */}

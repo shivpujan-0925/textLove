@@ -5,7 +5,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#090A0F",
-  "theme_color": "#8B5CF6",
+  "theme_color": "#185FA5",
   "description": "Privacy-first, live-only one-to-one encrypted web messaging with zero server message retention and 30-minute auto-expiry.",
   "categories": ["social", "security", "utilities"],
   "icons": [

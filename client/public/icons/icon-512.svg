@@ -1,33 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#181432" />
-      <stop offset="100%" stop-color="#090A0F" />
-    </linearGradient>
-    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7C3AED" />
-      <stop offset="50%" stop-color="#8B5CF6" />
-      <stop offset="100%" stop-color="#DB2777" />
-    </linearGradient>
-    <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7C3AED" />
-      <stop offset="100%" stop-color="#DB2777" />
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="120" fill="url(#bgGrad)" />
-  <rect x="4" y="4" width="504" height="504" rx="116" fill="none" stroke="#7C3AED" stroke-opacity="0.3" stroke-width="4" />
-  
-  <g transform="translate(86, 86)">
-    <rect width="340" height="340" rx="96" fill="url(#badgeGrad)" />
-    <g transform="translate(54, 54) scale(9.666)">
-      <path
-        d="M12 2C6.48 2 2 6.03 2 11c0 2.22.91 4.26 2.43 5.85L3.38 19.61a.6.6 0 00.75.75l3.45-1.15A10.36 10.36 0 0012 20c5.52 0 10-4.03 10-9s-4.48-9-10-9z"
-        fill="#FFFFFF"
-      />
-      <path
-        d="M12 14.2l-.56-.51C9.44 11.89 8 10.58 8 9c0-1.28.98-2.25 2.25-2.25.72 0 1.4.33 1.75.86.35-.53 1.03-.86 1.75-.86 1.27 0 2.25.97 2.25 2.25 0 1.58-1.44 2.89-3.44 4.69l-.56.51z"
-        fill="url(#heartGrad)"
-      />
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="textLove logo">
+  <title>textLove</title>
+  <rect width="512" height="512" rx="112" fill="#185FA5"/>
+  <g transform="translate(-438.4,-115.2) scale(3.2)">
+    <polygon points="195,105 265,75 245,135 230,117" fill="#FFFFFF"/>
+    <polygon points="230,117 265,75 238,119" fill="#B5D4F4"/>
+    <path d="M210 124 C201 138 190 129 182 141" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="3 4" stroke-linecap="round"/>
+    <path d="M176 157 C169 152 169 146 173 146 C174.5 146 175.5 147 176 148 C176.5 147 177.5 146 179 146 C183 146 183 152 176 157 Z" fill="#FF6B8E"/>
   </g>
 </svg>

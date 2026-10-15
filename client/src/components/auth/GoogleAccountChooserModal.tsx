@@ -108,7 +108,7 @@ export const GoogleAccountChooserModal: React.FC<GoogleAccountChooserModalProps>
 
         <h3 className="text-xl font-bold text-foreground">Sign in with Google</h3>
         <p className="text-xs text-foreground-muted mt-1">
-          Choose an account to continue to <span className="font-semibold text-primary">textLove</span>
+          Choose an account to continue to <span className="font-semibold text-[#185FA5] dark:text-[#5BA2E6]">text</span><span className="font-extrabold text-[#E04870] dark:text-[#FF6B8E]">Love</span>
         </p>
 
         {error && (
