@@ -4,6 +4,7 @@ import { SessionRepository } from '../repositories/session.repository.js';
 import { IUser } from '../models/User.model.js';
 import { ISession } from '../models/Session.model.js';
 import { AppError } from '../utils/appError.js';
+import { env } from '../config/env.js';
 
 // Extend Express Request declaration
 declare global {
@@ -33,8 +34,12 @@ export const authenticate = async (
     const sessionResult = await SessionRepository.findValidSession(token);
 
     if (!sessionResult) {
-      // Session expired or revoked; clear the cookie
-      res.clearCookie('textlove_session', { path: '/' });
+      // Session expired or revoked; clear the cookie with matching attributes
+      res.clearCookie('textlove_session', {
+        path: '/',
+        secure: env.NODE_ENV === 'production',
+        sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      });
       return next(new AppError('Session expired. Please sign in again.', 401, 'SESSION_EXPIRED'));
     }
 

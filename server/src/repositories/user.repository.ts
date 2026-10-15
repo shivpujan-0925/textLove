@@ -218,6 +218,7 @@ export class UserRepository {
           username: deletedUsername,
           avatarUrl: undefined,
           avatarPublicId: undefined,
+          publicKeyBundle: undefined,
           updatedAt: new Date(),
         },
         { new: true }
@@ -232,6 +233,7 @@ export class UserRepository {
     user.username = deletedUsername;
     user.avatarUrl = undefined;
     user.avatarPublicId = undefined;
+    user.publicKeyBundle = undefined;
     user.updatedAt = new Date();
     return user;
   }

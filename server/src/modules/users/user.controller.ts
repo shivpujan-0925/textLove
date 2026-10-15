@@ -7,6 +7,7 @@ import { CloudinaryService } from '../../services/cloudinary.service.js';
 import { connectionRegistry } from '../../socket/connectionRegistry.js';
 import { UsernameHelper } from '../../utils/usernameGenerator.js';
 import { AppError } from '../../utils/appError.js';
+import { env } from '../../config/env.js';
 
 export class UserController {
   /**
@@ -247,8 +248,12 @@ export class UserController {
       // 5. Mark user account deleted and release username
       await UserRepository.deleteAccount(userId);
 
-      // 6. Clear session cookie
-      res.clearCookie('textlove_session', { path: '/' });
+      // 6. Clear session cookie with matching attributes
+      res.clearCookie('textlove_session', {
+        path: '/',
+        secure: env.NODE_ENV === 'production',
+        sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
+      });
 
       res.status(200).json({
         success: true,
