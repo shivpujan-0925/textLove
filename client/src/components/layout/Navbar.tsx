@@ -10,7 +10,6 @@ import {
   Sun,
   Moon,
   Laptop,
-  Settings,
   MessageSquare,
   LogOut,
   Download,
@@ -159,24 +158,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Settings Dialog Trigger */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onOpenSettings}
-          title="Settings & Privacy"
-          aria-label="Settings and Privacy"
-        >
-          <Settings className="w-4 h-4 text-foreground-muted hover:text-foreground" />
-        </Button>
-
-        {/* Authenticated User Pill & Quick Logout */}
+        {/* Authenticated User Profile Trigger & Quick Logout */}
         {user && (
-          <div className="flex items-center gap-2 pl-1 border-l border-border/60">
+          <div className="flex items-center gap-2 pl-2 border-l border-border/60">
             <button
               onClick={onOpenSettings}
               className="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-surface-raised transition-colors text-left"
-              title="View your profile in settings"
+              title="Settings & Privacy"
+              aria-label="Settings and Privacy"
             >
               <Avatar src={user.avatarUrl} name={user.displayName || user.username} size="sm" />
               <div className="hidden lg:flex flex-col">

@@ -94,6 +94,8 @@ describe('textLove Client Application', () => {
     expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeInTheDocument();
     // Critical assertion: Unauthenticated "Explore Chat Layout" must be removed
     expect(screen.queryByText(/Explore Chat Layout/i)).not.toBeInTheDocument();
+    // Critical assertion: Unauthenticated settings gear icon must not exist
+    expect(screen.queryByLabelText(/Settings and Privacy/i)).not.toBeInTheDocument();
   });
 
   it('switches to the chat interface only after signing in', async () => {
@@ -102,8 +104,8 @@ describe('textLove Client Application', () => {
     expect(screen.getByText(/Welcome to/i)).toBeInTheDocument();
   });
 
-  it('can open and close settings modal', () => {
-    render(<App />);
+  it('can open and close settings modal via profile picture view after signing in', async () => {
+    await signInAsBob();
     const settingsBtn = screen.getByLabelText(/Settings and Privacy/i);
     fireEvent.click(settingsBtn);
 
@@ -115,8 +117,8 @@ describe('textLove Client Application', () => {
     fireEvent.click(closeBtn);
   });
 
-  it('renders profile management, avatar file input, and account deletion dialog in Settings', () => {
-    render(<App />);
+  it('renders profile management, avatar file input, and account deletion dialog in Settings', async () => {
+    await signInAsBob();
     const settingsBtn = screen.getByLabelText(/Settings and Privacy/i);
     fireEvent.click(settingsBtn);
 
