@@ -119,4 +119,26 @@ describe('Usernames & Public User Profiles', () => {
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('USERNAME_TAKEN');
   });
+
+  it('PATCH /api/v1/users/username enforces 7-day cooldown on subsequent changes with 429', async () => {
+    const { cookie, csrfToken } = await registerUser('Cooldown User', 'cooldown@example.com');
+
+    // First change succeeds
+    const firstRes = await request(app)
+      .patch('/api/v1/users/username')
+      .set('Cookie', [cookie])
+      .set('X-CSRF-Token', csrfToken)
+      .send({ newUsername: 'cooldown_handle1' });
+    expect(firstRes.status).toBe(200);
+
+    // Second change immediately fails with 429 USERNAME_COOLDOWN
+    const secondRes = await request(app)
+      .patch('/api/v1/users/username')
+      .set('Cookie', [cookie])
+      .set('X-CSRF-Token', csrfToken)
+      .send({ newUsername: 'cooldown_handle2' });
+    expect(secondRes.status).toBe(429);
+    expect(secondRes.body.error.code).toBe('USERNAME_COOLDOWN');
+    expect(secondRes.body.error.message).toContain('7 days');
+  });
 });

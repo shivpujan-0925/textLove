@@ -118,7 +118,11 @@ export class UserRepository {
       try {
         const updated = await UserModel.findByIdAndUpdate(
           userId,
-          { username: normalized, updatedAt: new Date() },
+          {
+            username: normalized,
+            lastUsernameChangedAt: new Date(),
+            updatedAt: new Date(),
+          },
           { new: true, runValidators: true }
         );
         if (!updated) throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
@@ -134,6 +138,7 @@ export class UserRepository {
     const user = inMemUsers.get(userId);
     if (!user) throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
     user.username = normalized;
+    user.lastUsernameChangedAt = new Date();
     user.updatedAt = new Date();
     return user;
   }
@@ -160,7 +165,12 @@ export class UserRepository {
 
   public static async updateProfile(
     userId: string,
-    data: { displayName?: string; avatarUrl?: string; avatarPublicId?: string }
+    data: {
+      displayName?: string;
+      avatarUrl?: string;
+      avatarPublicId?: string;
+      lastAvatarChangedAt?: Date;
+    }
   ): Promise<IUser> {
     if (isDatabaseConnected()) {
       const updated = await UserModel.findByIdAndUpdate(
@@ -177,6 +187,7 @@ export class UserRepository {
     if (data.displayName !== undefined) user.displayName = data.displayName;
     if (data.avatarUrl !== undefined) user.avatarUrl = data.avatarUrl;
     if (data.avatarPublicId !== undefined) user.avatarPublicId = data.avatarPublicId;
+    if (data.lastAvatarChangedAt !== undefined) user.lastAvatarChangedAt = data.lastAvatarChangedAt;
     user.updatedAt = new Date();
     return user;
   }

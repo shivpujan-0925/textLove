@@ -128,6 +128,28 @@ describe('Profile Management, Cloudinary Avatar Uploads & Username Discovery', (
       const meRes = await request(app).get('/api/v1/auth/me').set('Cookie', [cookie]);
       expect(meRes.body.user.avatarUrl).toBe(res.body.user.avatarUrl);
     });
+
+    it('enforces 1-hour cooldown on consecutive avatar uploads with 429 AVATAR_COOLDOWN', async () => {
+      const { cookie, csrfToken } = await registerUser('Avatar Cooldown User', 'avatar.cooldown@example.com');
+
+      // First upload succeeds
+      const firstRes = await request(app)
+        .post('/api/v1/users/avatar')
+        .set('Cookie', [cookie])
+        .set('X-CSRF-Token', csrfToken)
+        .attach('avatar', createValidPngBuffer(), 'avatar1.png');
+      expect(firstRes.status).toBe(200);
+
+      // Immediate second upload is rejected with 429
+      const secondRes = await request(app)
+        .post('/api/v1/users/avatar')
+        .set('Cookie', [cookie])
+        .set('X-CSRF-Token', csrfToken)
+        .attach('avatar', createValidPngBuffer(), 'avatar2.png');
+      expect(secondRes.status).toBe(429);
+      expect(secondRes.body.error.code).toBe('AVATAR_COOLDOWN');
+      expect(secondRes.body.error.message).toContain('hour');
+    });
   });
 
   describe('Username Discovery / Search', () => {

@@ -15,6 +15,8 @@ export interface IUser extends Document {
     createdAt: Date;
   };
   status: 'active' | 'suspended' | 'deleted';
+  lastUsernameChangedAt?: Date;
+  lastAvatarChangedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   lastActiveAt: Date;
@@ -79,6 +81,12 @@ const UserSchema = new Schema<IUser>(
     lastActiveAt: {
       type: Date,
       default: Date.now,
+    },
+    lastUsernameChangedAt: {
+      type: Date,
+    },
+    lastAvatarChangedAt: {
+      type: Date,
     },
   },
   {

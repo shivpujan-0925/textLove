@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/useTheme';
 import { useToast } from '../../context/useToast';
 import { useAuth } from '../../context/useAuth';
@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Avatar } from '../ui/Avatar';
 import { PrivacyPolicyModal } from '../ui/PrivacyPolicyModal';
+import { cn } from '../../utils/cn';
 import {
   Sun,
   Moon,
@@ -20,7 +21,6 @@ import {
   AtSign,
   Camera,
   Loader2,
-  Eye,
 } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -28,6 +28,9 @@ interface SettingsModalProps {
   onClose: () => void;
   onLogout?: () => void;
 }
+
+const USERNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const AVATAR_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
@@ -41,25 +44,85 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [newUsername, setNewUsername] = useState(user?.username || '');
   const [isUpdatingUsername, setIsUpdatingUsername] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
+  // Periodic tick to keep cooldown countdowns fresh
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!isOpen) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 15000);
+    return () => clearInterval(interval);
+  }, [isOpen]);
+
+  // Keep form inputs synced when user profile updates
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.displayName || '');
+      setNewUsername(user.username || '');
+    }
+  }, [user?.displayName, user?.username]);
+
+  // Cooldown calculation helper
+  const getCooldown = (lastChangedAt?: string, cooldownMs: number = 0) => {
+    if (!lastChangedAt) return { isActive: false, remainingMs: 0, text: '', nextAvailableDate: '' };
+    const lastTime = new Date(lastChangedAt).getTime();
+    if (isNaN(lastTime)) return { isActive: false, remainingMs: 0, text: '', nextAvailableDate: '' };
+
+    const remainingMs = Math.max(0, cooldownMs - (Date.now() - lastTime));
+    if (remainingMs <= 0) return { isActive: false, remainingMs: 0, text: '', nextAvailableDate: '' };
+
+    const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutes = Math.ceil((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+
+    let text = '';
+    if (days > 0) {
+      text = `${days}d ${hours}h`;
+    } else if (hours > 0) {
+      text = `${hours}h ${minutes}m`;
+    } else {
+      text = `${minutes}m`;
+    }
+
+    const nextAvailableDate = new Date(lastTime + cooldownMs).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
+
+    return { isActive: true, remainingMs, text, nextAvailableDate };
+  };
+
+  const usernameCooldown = getCooldown(user?.lastUsernameChangedAt, USERNAME_COOLDOWN_MS);
+  const avatarCooldown = getCooldown(user?.lastAvatarChangedAt, AVATAR_COOLDOWN_MS);
+
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (avatarCooldown.isActive) {
+      toast.warning(
+        'Cooldown Active',
+        `Avatar change is limited to once every hour. (${avatarCooldown.text} remaining)`
+      );
+      e.target.value = '';
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File too large', 'Avatar image must be under 5 MB.');
+      e.target.value = '';
       return;
     }
 
     setIsUploadingAvatar(true);
     try {
       await uploadAvatar(file);
-      toast.success('Profile Picture Updated', 'New avatar uploaded and processed securely.');
+      toast.success('Avatar Updated', 'New profile picture uploaded and processed securely.');
     } catch (err: unknown) {
       toast.error('Upload Failed', (err as Error).message);
     } finally {
@@ -70,22 +133,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!displayName.trim()) return;
+    const trimmed = displayName.trim();
+    if (!trimmed || trimmed === user?.displayName) return;
+    setIsSavingProfile(true);
     try {
-      await updateProfile(displayName.trim());
+      await updateProfile(trimmed);
       toast.success('Profile updated', 'Your display name has been saved.');
     } catch (err: unknown) {
       toast.error('Failed to update profile', (err as Error).message);
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
   const handleSaveUsername = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUsername.trim() || newUsername.trim() === user?.username) return;
+    const trimmed = newUsername.trim().toLowerCase();
+    if (!trimmed || trimmed === user?.username) return;
+
+    if (usernameCooldown.isActive) {
+      toast.warning(
+        'Cooldown Active',
+        `Username can only be changed once every 7 days. (${usernameCooldown.text} remaining)`
+      );
+      return;
+    }
+
     setIsUpdatingUsername(true);
     try {
-      await updateUsername(newUsername.trim());
-      toast.success('Username changed', `@${newUsername.trim()} is now your public username.`);
+      await updateUsername(trimmed);
+      toast.success('Username changed', `@${trimmed} is now your public username.`);
     } catch (err: unknown) {
       toast.error('Username change failed', (err as Error).message);
     } finally {
@@ -123,35 +200,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const hasDisplayNameChanged = displayName.trim() !== '' && displayName.trim() !== user?.displayName;
+  const hasUsernameChanged = newUsername.trim() !== '' && newUsername.trim().toLowerCase() !== user?.username;
+
   return (
     <>
       <Dialog
         isOpen={isOpen && !showDeleteConfirm}
         onClose={onClose}
         title="Settings & Privacy"
-        description="Manage your textLove profile, interface theme, and privacy preferences."
+        description="Manage your profile identity, appearance, and privacy preferences."
       >
-        <div className="flex flex-col gap-4 sm:gap-5 py-1 sm:py-2">
-          {/* Profile Overview */}
-          <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-foreground tracking-wider uppercase">
-                Profile
-              </span>
-              {user && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="h-7 px-2.5 text-xs text-foreground-muted hover:text-accent-crimson gap-1.5"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Sign Out
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 sm:gap-4 p-3 rounded-2xl bg-surface-raised border border-border">
+        <div className="flex flex-col gap-4 py-1">
+          {/* Unified Profile & Identity Card */}
+          <section className="p-4 rounded-2xl bg-surface-raised/40 border border-border/70 flex flex-col gap-4">
+            {/* Profile Header Row */}
+            <div className="flex items-center gap-3.5">
               <div className="relative group flex-shrink-0">
                 <Avatar
                   name={user?.displayName || 'User'}
@@ -160,122 +224,208 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   isOnline={user?.isOnline || false}
                   showPresence
                 />
+                {/* Camera upload overlay */}
                 <label
-                  htmlFor="avatar-upload-overlay"
-                  className="absolute inset-0 rounded-full flex flex-col items-center justify-center bg-black/60 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-xs"
-                  title="Upload profile picture"
+                  htmlFor="avatar-upload-input"
+                  className={cn(
+                    'absolute inset-0 rounded-full flex flex-col items-center justify-center transition-all backdrop-blur-xs select-none',
+                    avatarCooldown.isActive
+                      ? 'bg-black/60 text-accent-amber/90 cursor-not-allowed'
+                      : 'bg-black/50 hover:bg-black/70 text-white cursor-pointer opacity-0 group-hover:opacity-100'
+                  )}
+                  title={
+                    avatarCooldown.isActive
+                      ? `Avatar locked (${avatarCooldown.text} remaining)`
+                      : 'Change profile picture (1 hour cooldown)'
+                  }
                 >
                   {isUploadingAvatar ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : avatarCooldown.isActive ? (
+                    <Lock className="w-4 h-4 text-accent-amber" />
                   ) : (
-                    <Camera className="w-5 h-5" />
+                    <Camera className="w-4 h-4" />
                   )}
                   <input
-                    id="avatar-upload-overlay"
+                    id="avatar-upload-input"
                     type="file"
                     className="sr-only"
                     accept="image/png,image/jpeg,image/webp"
-                    disabled={isUploadingAvatar}
+                    disabled={isUploadingAvatar || avatarCooldown.isActive}
                     onChange={handleAvatarFileChange}
                   />
                 </label>
               </div>
 
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-semibold text-foreground truncate">
-                  {user?.displayName || 'User'}
-                </span>
-                <span className="text-xs text-foreground-muted font-mono truncate">
-                  @{user?.username || 'user'}
-                </span>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[11px] text-accent-emerald flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
-                    {user?.email ? 'Verified Account' : 'Active Session'}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm sm:text-base font-semibold text-foreground truncate">
+                    {user?.displayName || 'User'}
+                  </h3>
+                  {user && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLogout}
+                      className="h-7 px-2 text-xs text-foreground-muted hover:text-accent-crimson gap-1"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      Sign Out
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-foreground-muted font-mono truncate">
+                    @{user?.username || 'user'}
                   </span>
-                  <label
-                    htmlFor="avatar-upload-btn"
-                    className="text-[11px] text-primary hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    <Camera className="w-3 h-3" />
-                    {isUploadingAvatar ? 'Uploading...' : 'Change photo'}
-                    <input
-                      id="avatar-upload-btn"
-                      type="file"
-                      className="sr-only"
-                      accept="image/png,image/jpeg,image/webp"
-                      disabled={isUploadingAvatar}
-                      onChange={handleAvatarFileChange}
-                    />
-                  </label>
+                  <span className="w-1 h-1 rounded-full bg-border" />
+                  <span className="text-[11px] text-accent-emerald flex items-center gap-1 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald animate-pulse" />
+                    {user?.email ? 'Verified' : 'Active Session'}
+                  </span>
+                </div>
+
+                {/* Avatar Cooldown / Change Action */}
+                <div className="mt-2 flex items-center gap-2">
+                  {avatarCooldown.isActive ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent-amber/10 text-accent-amber border border-accent-amber/20 text-[10px] font-medium">
+                      <Clock className="w-3 h-3 flex-shrink-0" />
+                      Photo locked ({avatarCooldown.text} left)
+                    </span>
+                  ) : (
+                    <label
+                      htmlFor="avatar-upload-input"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary-hover cursor-pointer"
+                    >
+                      <Camera className="w-3 h-3" />
+                      Change photo (1h limit)
+                    </label>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Change Username Form */}
-            <form onSubmit={handleSaveUsername} className="flex flex-col gap-1.5 p-3 rounded-xl bg-surface-raised/50 border border-border">
-              <span className="text-xs font-medium text-foreground">Unique Public Username</span>
-              <div className="flex gap-2 items-center">
-                <div className="flex-1 min-w-0">
-                  <Input
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    placeholder="3-24 characters"
-                    leftIcon={<AtSign className="w-3.5 h-3.5" />}
-                    className="h-8 text-xs font-mono"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  size="sm"
-                  isLoading={isUpdatingUsername}
-                  disabled={!newUsername.trim() || newUsername.trim() === user?.username}
-                  className="h-8 text-xs flex-shrink-0"
-                >
-                  Change
-                </Button>
-              </div>
-              <p className="text-[10px] text-foreground-muted">
-                Your unique handle for peers to find and chat with you.
-              </p>
-            </form>
+            {/* Subtle Divider */}
+            <div className="h-px bg-border/60" />
 
-            {/* Change Display Name Form */}
-            <form onSubmit={handleSaveProfile} className="flex gap-2 mt-1 items-end">
-              <div className="flex-1 min-w-0">
-                <Input
-                  label="Display Name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Enter display name"
-                  className="h-9 text-xs"
-                />
-              </div>
-              <Button type="submit" size="sm" className="h-9 text-xs flex-shrink-0">
-                Save
-              </Button>
-            </form>
+            {/* Editable Fields */}
+            <div className="flex flex-col gap-3.5">
+              {/* Display Name Field */}
+              <form onSubmit={handleSaveProfile} className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="settings-display-name" className="text-xs font-medium text-foreground">
+                    Display Name
+                  </label>
+                  <span className="text-[10px] text-foreground-muted">
+                    Visible to conversation peers
+                  </span>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      id="settings-display-name"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Enter display name"
+                      className="h-9 text-xs"
+                      disabled={isSavingProfile}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant={hasDisplayNameChanged ? 'primary' : 'secondary'}
+                    isLoading={isSavingProfile}
+                    disabled={!hasDisplayNameChanged || isSavingProfile}
+                    className="h-9 text-xs flex-shrink-0"
+                  >
+                    Save
+                  </Button>
+                </div>
+              </form>
+
+              {/* Unique Public Username Field */}
+              <form onSubmit={handleSaveUsername} className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="settings-username" className="text-xs font-medium text-foreground">
+                    Unique Public Username
+                  </label>
+                  {usernameCooldown.isActive ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-accent-amber font-medium">
+                      <Clock className="w-3 h-3" />
+                      Locked for {usernameCooldown.text}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-foreground-muted">
+                      1 change every 7 days
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1 min-w-0">
+                    <Input
+                      id="settings-username"
+                      value={newUsername}
+                      onChange={(e) =>
+                        setNewUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
+                      }
+                      placeholder="3-24 characters"
+                      leftIcon={<AtSign className="w-3.5 h-3.5" />}
+                      className="h-9 text-xs font-mono"
+                      disabled={usernameCooldown.isActive || isUpdatingUsername}
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    isLoading={isUpdatingUsername}
+                    disabled={
+                      usernameCooldown.isActive ||
+                      !hasUsernameChanged ||
+                      newUsername.trim().length < 3 ||
+                      isUpdatingUsername
+                    }
+                    className="h-9 text-xs flex-shrink-0"
+                  >
+                    Change
+                  </Button>
+                </div>
+
+                <p className="text-[10px] text-foreground-muted">
+                  {usernameCooldown.isActive
+                    ? `Username changes are limited to once every 7 days. Next change available on ${usernameCooldown.nextAvailableDate}.`
+                    : 'Your unique handle for peers to discover and chat with you.'}
+                </p>
+              </form>
+            </div>
           </section>
 
-          {/* Theme Settings */}
-          <section className="flex flex-col gap-3">
+          {/* Theme & Appearance (Segmented Pill Switcher) */}
+          <section className="flex flex-col gap-2">
             <span className="text-xs font-semibold text-foreground tracking-wider uppercase">
               Theme & Appearance
             </span>
-            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Theme selection">
+            <div
+              className="p-1 rounded-xl bg-surface-raised border border-border/70 grid grid-cols-3 gap-1"
+              role="group"
+              aria-label="Theme selection"
+            >
               <button
                 type="button"
                 onClick={() => setTheme('light')}
                 aria-pressed={theme === 'light'}
                 aria-label="Light mode"
-                className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                className={cn(
+                  'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition-all select-none',
                   theme === 'light'
-                    ? 'border-primary bg-primary/10 text-primary font-medium shadow-xs'
-                    : 'border-border bg-surface-raised text-foreground-muted hover:text-foreground'
-                }`}
+                    ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                    : 'text-foreground-muted hover:text-foreground hover:bg-surface-raised/60'
+                )}
               >
-                <Sun className="w-4 h-4" />
-                <span className="text-xs">Light</span>
+                <Sun className="w-3.5 h-3.5" />
+                Light
               </button>
 
               <button
@@ -283,14 +433,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={() => setTheme('dark')}
                 aria-pressed={theme === 'dark'}
                 aria-label="Dark mode"
-                className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                className={cn(
+                  'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition-all select-none',
                   theme === 'dark'
-                    ? 'border-primary bg-primary/10 text-primary font-medium shadow-xs'
-                    : 'border-border bg-surface-raised text-foreground-muted hover:text-foreground'
-                }`}
+                    ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                    : 'text-foreground-muted hover:text-foreground hover:bg-surface-raised/60'
+                )}
               >
-                <Moon className="w-4 h-4" />
-                <span className="text-xs">Dark</span>
+                <Moon className="w-3.5 h-3.5" />
+                Dark
               </button>
 
               <button
@@ -298,49 +449,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={() => setTheme('system')}
                 aria-pressed={theme === 'system'}
                 aria-label="System preference theme"
-                className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                className={cn(
+                  'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-medium transition-all select-none',
                   theme === 'system'
-                    ? 'border-primary bg-primary/10 text-primary font-medium shadow-xs'
-                    : 'border-border bg-surface-raised text-foreground-muted hover:text-foreground'
-                }`}
+                    ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                    : 'text-foreground-muted hover:text-foreground hover:bg-surface-raised/60'
+                )}
               >
-                <Laptop className="w-4 h-4" />
-                <span className="text-xs">System</span>
+                <Laptop className="w-3.5 h-3.5" />
+                System
               </button>
             </div>
           </section>
 
-          {/* Architectural Invariants Overview */}
-          <section className="flex flex-col gap-2 p-3.5 rounded-xl bg-surface-raised/70 border border-border text-xs">
-            <span className="font-semibold text-foreground flex items-center gap-1.5">
-              <Shield className="w-4 h-4 text-primary" />
-              textLove Privacy Assurances
-            </span>
-            <ul className="text-foreground-muted space-y-1.5 mt-1 text-[11px]">
-              <li className="flex items-center gap-1.5">
+          {/* Privacy Assurances Section */}
+          <section className="p-3.5 rounded-xl bg-surface-raised/30 border border-border/70 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Shield className="w-4 h-4 text-primary" />
+                textLove Privacy Assurances
+              </span>
+              <span className="text-[10px] font-mono text-accent-emerald px-1.5 py-0.5 rounded bg-accent-emerald/10 border border-accent-emerald/20 font-medium">
+                Zero-Retention
+              </span>
+            </div>
+
+            <ul className="text-foreground-muted space-y-1.5 text-[11px]">
+              <li className="flex items-center gap-2">
                 <Lock className="w-3.5 h-3.5 text-accent-emerald flex-shrink-0" />
-                Private keys stay on device; server forwards opaque ciphertext only.
+                <span>Private keys stay on device; server forwards opaque ciphertext only.</span>
               </li>
-              <li className="flex items-center gap-1.5">
+              <li className="flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 text-accent-emerald flex-shrink-0" />
-                Live-only messaging: zero message database or store-and-forward queue.
+                <span>Live-only messaging: zero database storage or store-and-forward queue.</span>
               </li>
-              <li className="flex items-center gap-1.5">
+              <li className="flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-accent-amber flex-shrink-0" />
-                Authoritative 30-minute inactivity auto-expiry wipes RAM state.
-              </li>
-              <li className="flex items-start gap-1.5">
-                <Eye className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                <span>
-                  <strong>Device Observation Notice:</strong> Browsers cannot block operating system-level screenshots, recordings, or camera capture. While textLove guarantees zero server/network retention, displayed content can always be captured by the recipient device.
-                </span>
+                <span>Authoritative 30-minute inactivity auto-expiry wipes RAM state.</span>
               </li>
             </ul>
 
             <button
               type="button"
               onClick={() => setShowPrivacyModal(true)}
-              className="text-primary hover:underline text-[11px] font-medium flex items-center gap-1 mt-1 text-left cursor-pointer"
+              className="pt-1 text-primary hover:underline text-[11px] font-medium flex items-center gap-1 cursor-pointer text-left"
             >
               <Shield className="w-3 h-3 flex-shrink-0" />
               <span>View Complete Privacy Policy & Security Standards &rarr;</span>
@@ -348,7 +500,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </section>
 
           {/* Danger Zone: Account Deletion */}
-          <section className="flex flex-col gap-2 pt-2 border-t border-border">
+          <section className="flex flex-col gap-2 pt-1 border-t border-border/60">
             <span className="text-xs font-semibold text-accent-crimson tracking-wider uppercase">
               Danger Zone
             </span>
@@ -356,14 +508,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex flex-col">
                 <span className="text-xs font-medium text-foreground">Delete Account</span>
                 <span className="text-[11px] text-foreground-muted">
-                  Permanently delete username, sessions, and Cloudinary media.
+                  Permanently purge username, sessions, and Cloudinary media.
                 </span>
               </div>
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-xs flex-shrink-0"
+                className="text-xs flex-shrink-0 h-8"
               >
                 <Trash2 className="w-3.5 h-3.5 mr-1" />
                 Delete
@@ -372,7 +524,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </section>
 
           {/* Footer Copyright */}
-          <div className="text-center pt-2 border-t border-border/40 text-[10px] text-foreground-muted">
+          <div className="text-center pt-1 border-t border-border/40 text-[10px] text-foreground-muted">
             &copy; {new Date().getFullYear()} textLove Inc. Zero-retention encrypted communications.
           </div>
         </div>

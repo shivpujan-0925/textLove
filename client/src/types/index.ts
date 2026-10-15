@@ -18,6 +18,8 @@ export interface User {
   avatarUrl?: string;
   isOnline: boolean;
   hasRegisteredKeys?: boolean;
+  lastUsernameChangedAt?: string;
+  lastAvatarChangedAt?: string;
 }
 
 export interface PublicUser {

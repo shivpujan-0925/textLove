@@ -83,6 +83,23 @@ export class UserController {
 
       UsernameHelper.validateOrThrow(newUsername);
 
+      // Enforce 7-day username change cooldown to prevent handle churning and impersonation
+      const USERNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+      if (req.user.lastUsernameChangedAt) {
+        const elapsed = Date.now() - new Date(req.user.lastUsernameChangedAt).getTime();
+        if (elapsed < USERNAME_COOLDOWN_MS) {
+          const remainingMs = USERNAME_COOLDOWN_MS - elapsed;
+          const days = Math.floor(remainingMs / (24 * 60 * 60 * 1000));
+          const hours = Math.ceil((remainingMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+          const timeText = days > 0 ? `${days} day(s)` : `${hours} hour(s)`;
+          throw new AppError(
+            `Username can only be changed once every 7 days. Next change available in ${timeText}.`,
+            429,
+            'USERNAME_COOLDOWN'
+          );
+        }
+      }
+
       const updatedUser = await UserRepository.updateUsername(req.user._id.toString(), newUsername);
 
       res.status(200).json({
@@ -93,6 +110,8 @@ export class UserController {
           username: updatedUser.username,
           displayName: updatedUser.displayName,
           avatarUrl: updatedUser.avatarUrl,
+          lastUsernameChangedAt: updatedUser.lastUsernameChangedAt,
+          lastAvatarChangedAt: updatedUser.lastAvatarChangedAt,
         },
       });
     } catch (err) {
@@ -150,6 +169,20 @@ export class UserController {
         throw new AppError('No avatar image file provided.', 400, 'MISSING_FILE');
       }
 
+      // Enforce 1-hour avatar update cooldown to prevent upload spam and resource abuse
+      const AVATAR_COOLDOWN_MS = 60 * 60 * 1000;
+      if (req.user.lastAvatarChangedAt) {
+        const elapsed = Date.now() - new Date(req.user.lastAvatarChangedAt).getTime();
+        if (elapsed < AVATAR_COOLDOWN_MS) {
+          const remainingMinutes = Math.ceil((AVATAR_COOLDOWN_MS - elapsed) / (60 * 1000));
+          throw new AppError(
+            `Profile photo can only be changed once every 1 hour. Next update available in ${remainingMinutes} minute(s).`,
+            429,
+            'AVATAR_COOLDOWN'
+          );
+        }
+      }
+
       // If user already had a Cloudinary avatar, schedule previous asset cleanup
       if (req.user.avatarPublicId) {
         await CloudinaryService.deleteAvatar(req.user.avatarPublicId);
@@ -163,6 +196,7 @@ export class UserController {
       const updated = await UserRepository.updateProfile(req.user._id.toString(), {
         avatarUrl,
         avatarPublicId,
+        lastAvatarChangedAt: new Date(),
       });
 
       res.status(200).json({
@@ -173,6 +207,8 @@ export class UserController {
           username: updated.username,
           displayName: updated.displayName,
           avatarUrl: updated.avatarUrl,
+          lastUsernameChangedAt: updated.lastUsernameChangedAt,
+          lastAvatarChangedAt: updated.lastAvatarChangedAt,
         },
       });
     } catch (err) {

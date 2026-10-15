@@ -130,6 +130,8 @@ export class AuthController {
         displayName: req.user.displayName,
         avatarUrl: req.user.avatarUrl,
         hasRegisteredKeys: Boolean(req.user.publicKeyBundle?.identityPublicKey),
+        lastUsernameChangedAt: req.user.lastUsernameChangedAt,
+        lastAvatarChangedAt: req.user.lastAvatarChangedAt,
       },
       csrfToken: req.session.csrfToken,
     });

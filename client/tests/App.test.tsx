@@ -63,9 +63,11 @@ describe('textLove Client Application', () => {
     const settingsBtn = screen.getByLabelText(/Settings and Privacy/i);
     fireEvent.click(settingsBtn);
 
-    // Profile elements
+    // Profile elements and cooldown limits
     expect(screen.getByText(/Unique Public Username/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 change every 7 days/i)).toBeInTheDocument();
     expect(screen.getByText(/Display Name/i)).toBeInTheDocument();
+    expect(screen.getByText(/Change photo \(1h limit\)/i)).toBeInTheDocument();
     expect(screen.getByText(/Danger Zone/i)).toBeInTheDocument();
 
     // Verify file input exists for avatar upload

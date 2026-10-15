@@ -80,6 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           avatarUrl: data.user.avatarUrl,
           isOnline: true,
           hasRegisteredKeys: data.user.hasRegisteredKeys,
+          lastUsernameChangedAt: data.user.lastUsernameChangedAt,
+          lastAvatarChangedAt: data.user.lastAvatarChangedAt,
         });
         setCsrfToken(data.csrfToken);
         await KeyStore.getInstance().initForUserAsync(data.user.username);
@@ -167,6 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatarUrl: data.user.avatarUrl,
         isOnline: true,
         hasRegisteredKeys: data.user.hasRegisteredKeys,
+        lastUsernameChangedAt: data.user.lastUsernameChangedAt,
+        lastAvatarChangedAt: data.user.lastAvatarChangedAt,
       });
       setCsrfToken(data.csrfToken);
       await KeyStore.getInstance().initForUserAsync(data.user.username);
@@ -203,6 +207,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             avatarUrl: data.user.avatarUrl,
             isOnline: true,
             hasRegisteredKeys: data.user.hasRegisteredKeys,
+            lastUsernameChangedAt: data.user.lastUsernameChangedAt,
+            lastAvatarChangedAt: data.user.lastAvatarChangedAt,
           });
           setCsrfToken(data.csrfToken);
           await KeyStore.getInstance().initForUserAsync(data.user.username);
@@ -285,7 +291,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(data.error?.message || 'Failed to update username');
     }
 
-    setUser((prev) => (prev ? { ...prev, username: data.user.username } : null));
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            username: data.user.username,
+            lastUsernameChangedAt: data.user.lastUsernameChangedAt,
+          }
+        : null
+    );
   };
 
   // 7. Update display name
@@ -331,7 +345,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(data.error?.message || 'Failed to upload avatar image');
     }
 
-    setUser((prev) => (prev ? { ...prev, avatarUrl: data.user.avatarUrl } : null));
+    setUser((prev) =>
+      prev
+        ? {
+            ...prev,
+            avatarUrl: data.user.avatarUrl,
+            lastAvatarChangedAt: data.user.lastAvatarChangedAt,
+          }
+        : null
+    );
   };
 
   // 9. Permanent account deletion cascade
