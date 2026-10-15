@@ -67,12 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // 1. Check existing session on load
   const checkAuth = useCallback(async () => {
     try {
-      const token = sessionStorage.getItem('textlove_session_token');
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const res = await fetch(apiUrl('/api/v1/auth/me'), {
-        headers,
+        headers: getAuthHeaders(),
         credentials: 'include',
       });
       if (res.ok) {
@@ -254,9 +250,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (csrfToken) {
         await fetch(apiUrl('/api/v1/auth/logout'), {
           method: 'POST',
-          headers: {
+          headers: getAuthHeaders({
             'X-CSRF-Token': csrfToken,
-          },
+          }),
           credentials: 'include',
         });
       }
@@ -344,10 +340,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const res = await fetch(apiUrl('/api/v1/users/me'), {
       method: 'DELETE',
-      headers: {
+      headers: getAuthHeaders({
         'Content-Type': 'application/json',
         'X-CSRF-Token': csrfToken,
-      },
+      }),
       credentials: 'include',
       body: JSON.stringify({ confirmation }),
     });
@@ -360,6 +356,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     KeyStore.getInstance().reset();
     setUser(null);
     setCsrfToken(null);
+    sessionStorage.removeItem('textlove_session_token');
+    sessionStorage.removeItem('textlove_oauth_verifier');
+    sessionStorage.removeItem('textlove_oauth_state');
     return data;
   };
 
