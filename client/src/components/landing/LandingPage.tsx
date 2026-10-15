@@ -189,30 +189,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-accent-emerald" />
             </div>
 
-            {/* Production Legal & Privacy Policy Links */}
-            <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-foreground-muted">
+            {/* Production Legal & Privacy Policy Link */}
+            <div className="flex items-center justify-center text-xs text-foreground-muted">
               <button
                 type="button"
                 onClick={() => setIsPrivacyModalOpen(true)}
                 className="hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
               >
                 Privacy Policy
-              </button>
-              <span>&bull;</span>
-              <button
-                type="button"
-                onClick={() => setIsPrivacyModalOpen(true)}
-                className="hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
-              >
-                Security Architecture
-              </button>
-              <span>&bull;</span>
-              <button
-                type="button"
-                onClick={() => setIsPrivacyModalOpen(true)}
-                className="hover:text-primary transition-colors cursor-pointer underline-offset-4 hover:underline"
-              >
-                Zero-Retention Terms
               </button>
             </div>
           </div>
