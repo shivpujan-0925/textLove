@@ -479,25 +479,41 @@ const MainContent: React.FC = () => {
       <main id="main-content" role="main" className="flex-1 overflow-hidden relative min-h-0">
         {isAuthLoading ? (
           <div className="h-full flex overflow-hidden min-h-0 select-none" aria-label="Loading chat layout">
-            {/* Sidebar Skeleton matching actual sidebar layout 1:1 */}
-            <div className="h-full flex-shrink-0 hidden md:flex w-80 lg:w-96 border-r border-border bg-surface flex-col p-4 gap-4 animate-pulse">
-              <div className="flex items-center gap-3 pb-3 border-b border-border/70">
-                <div className="w-10 h-10 rounded-xl bg-surface-raised border border-border/40" />
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <div className="h-4 w-28 bg-surface-raised rounded" />
-                  <div className="h-3 w-20 bg-surface-raised rounded" />
+            {/* Sidebar Skeleton matching actual sidebar layout 1:1 on both mobile and desktop */}
+            <div className="h-full flex-shrink-0 flex w-full md:w-80 lg:w-96 border-r border-border bg-surface flex-col select-none animate-pulse">
+              {/* User Header Card */}
+              <div className="p-4 border-b border-border/70 flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-10 h-10 rounded-xl bg-surface-raised border border-border/40 flex-shrink-0" />
+                  <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <div className="h-3.5 w-28 bg-surface-raised rounded" />
+                    <div className="h-2.5 w-16 bg-surface-raised rounded" />
+                  </div>
                 </div>
+                <div className="w-9 h-9 rounded-xl bg-surface-raised/60 flex-shrink-0" />
               </div>
-              <div className="h-10 w-full bg-surface-raised rounded-xl" />
-              <div className="flex flex-col gap-2 pt-2">
-                <div className="h-16 w-full bg-surface-raised/60 rounded-xl" />
-                <div className="h-16 w-full bg-surface-raised/60 rounded-xl" />
-                <div className="h-16 w-full bg-surface-raised/60 rounded-xl" />
+
+              {/* Search Bar Skeleton */}
+              <div className="p-3 border-b border-border/60">
+                <div className="h-10 w-full bg-surface-raised rounded-xl" />
+              </div>
+
+              {/* Conversations List Skeleton */}
+              <div className="flex-1 p-3 flex flex-col gap-2 overflow-hidden">
+                <div className="h-16 w-full bg-surface-raised/40 rounded-xl" />
+                <div className="h-16 w-full bg-surface-raised/40 rounded-xl" />
+                <div className="h-16 w-full bg-surface-raised/40 rounded-xl" />
+              </div>
+
+              {/* Sidebar Footer Skeleton */}
+              <div className="p-3 bg-surface-raised/40 border-t border-border flex items-center justify-between">
+                <div className="h-3 w-28 bg-surface-raised rounded" />
+                <div className="h-3 w-12 bg-surface-raised rounded" />
               </div>
             </div>
 
-            {/* Empty Chat Area Skeleton matching actual EmptyChatState 1:1 */}
-            <div className="h-full flex-1 flex flex-col items-center justify-center p-6 bg-background">
+            {/* Empty Chat Area Skeleton (hidden on mobile, flex-1 on desktop) */}
+            <div className="h-full flex-1 hidden md:flex flex-col items-center justify-center p-6 bg-background">
               <div className="max-w-md w-full flex flex-col items-center text-center animate-pulse">
                 <div className="w-12 h-12 rounded-2xl bg-surface-raised mb-6" />
                 <div className="h-7 w-56 bg-surface-raised rounded-lg mb-3" />

@@ -162,12 +162,15 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Placeholder skeleton during initial auth load to eliminate header shift */}
         {isLoadingAuth && (
-          <div className="flex items-center gap-2 pl-2 border-l border-border/60 animate-pulse">
-            <div className="w-7 h-7 rounded-full bg-surface-raised border border-border/40" />
-            <div className="hidden lg:flex flex-col gap-1 w-16">
-              <div className="h-3 w-12 bg-surface-raised rounded" />
-              <div className="h-2 w-8 bg-surface-raised rounded" />
+          <div className="flex items-center gap-2 pl-2 border-l border-border/60 animate-pulse select-none">
+            <div className="flex items-center gap-2 py-1 px-2 rounded-lg">
+              <div className="w-8 h-8 rounded-full bg-surface-raised border border-border/40 flex-shrink-0" />
+              <div className="hidden lg:flex flex-col gap-1 w-16">
+                <div className="h-3 w-12 bg-surface-raised rounded" />
+                <div className="h-2 w-8 bg-surface-raised rounded" />
+              </div>
             </div>
+            <div className="w-9 h-9 rounded-xl bg-surface-raised/60 flex-shrink-0" />
           </div>
         )}
 
