@@ -11,9 +11,9 @@
     --surface: 0 0% 100%;
     --surface-raised: 210 30% 95%;
     --border: 214 28% 88%;
-    --border-focus: 262 83% 58%;
+    --border-focus: 262 83% 48%;
 
-    --primary: 262 83% 58%;
+    --primary: 262 83% 48%;
     --primary-foreground: 0 0% 100%;
 
     --accent-rose: 336 84% 57%;
@@ -30,10 +30,10 @@
     --surface: 224 45% 8%;
     --surface-raised: 224 40% 12%;
     --border: 224 25% 18%;
-    --border-focus: 262 83% 58%;
+    --border-focus: 262 90% 70%;
 
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 262 90% 70%;
+    --primary-foreground: 224 71% 4%;
 
     --accent-rose: 336 84% 57%;
     --accent-emerald: 158 64% 48%;

@@ -23,6 +23,7 @@ interface NavbarProps {
   onSignIn?: () => void;
   isInstallable?: boolean;
   onInstallPwa?: () => void;
+  isLoadingAuth?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -33,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSignIn,
   isInstallable,
   onInstallPwa,
+  isLoadingAuth = false,
 }) => {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
@@ -158,8 +160,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
+        {/* Placeholder skeleton during initial auth load to eliminate header shift */}
+        {isLoadingAuth && (
+          <div className="flex items-center gap-2 pl-2 border-l border-border/60 animate-pulse">
+            <div className="w-7 h-7 rounded-full bg-surface-raised border border-border/40" />
+            <div className="hidden lg:flex flex-col gap-1 w-16">
+              <div className="h-3 w-12 bg-surface-raised rounded" />
+              <div className="h-2 w-8 bg-surface-raised rounded" />
+            </div>
+          </div>
+        )}
+
         {/* Authenticated User Profile Trigger & Quick Logout */}
-        {user && (
+        {!isLoadingAuth && user && (
           <div className="flex items-center gap-2 pl-2 border-l border-border/60">
             <button
               onClick={onOpenSettings}
@@ -172,7 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-xs font-semibold text-foreground leading-tight max-w-[100px] truncate">
                   {user.displayName}
                 </span>
-                <span className="text-[10px] text-primary font-mono leading-tight truncate">
+                <span className="text-[11px] font-semibold text-[#185FA5] dark:text-[#93C5FD] font-mono leading-tight truncate">
                   @{user.username}
                 </span>
               </div>

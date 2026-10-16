@@ -12,7 +12,6 @@ import { ChatArea } from './components/layout/ChatArea';
 import { EmptyChatState } from './components/layout/EmptyChatState';
 import { SettingsModal } from './components/layout/SettingsModal';
 import { LandingPage } from './components/landing/LandingPage';
-import { BrandLogo } from './components/ui/BrandLogo';
 import {
   GoogleAccountChooserModal,
   GoogleAccountChoice,
@@ -416,6 +415,7 @@ const MainContent: React.FC = () => {
         onLogout={handleLogout}
         isInstallable={isInstallable}
         onInstallPwa={installPwa}
+        isLoadingAuth={isAuthLoading}
       />
 
       {/* Offline Mode Warning Banner */}
@@ -478,10 +478,37 @@ const MainContent: React.FC = () => {
 
       <main id="main-content" role="main" className="flex-1 overflow-hidden relative min-h-0">
         {isAuthLoading ? (
-          <div className="h-full flex items-center justify-center bg-background" aria-label="Loading session">
-            <div className="flex flex-col items-center gap-3 select-none">
-              <BrandLogo size="lg" />
-              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <div className="h-full flex overflow-hidden min-h-0 select-none" aria-label="Loading chat layout">
+            {/* Sidebar Skeleton matching actual sidebar layout 1:1 */}
+            <div className="h-full flex-shrink-0 hidden md:flex w-80 lg:w-96 border-r border-border bg-surface flex-col p-4 gap-4 animate-pulse">
+              <div className="flex items-center gap-3 pb-3 border-b border-border/70">
+                <div className="w-10 h-10 rounded-xl bg-surface-raised border border-border/40" />
+                <div className="flex flex-col gap-1.5 flex-1">
+                  <div className="h-4 w-28 bg-surface-raised rounded" />
+                  <div className="h-3 w-20 bg-surface-raised rounded" />
+                </div>
+              </div>
+              <div className="h-10 w-full bg-surface-raised rounded-xl" />
+              <div className="flex flex-col gap-2 pt-2">
+                <div className="h-16 w-full bg-surface-raised/60 rounded-xl" />
+                <div className="h-16 w-full bg-surface-raised/60 rounded-xl" />
+                <div className="h-16 w-full bg-surface-raised/60 rounded-xl" />
+              </div>
+            </div>
+
+            {/* Empty Chat Area Skeleton matching actual EmptyChatState 1:1 */}
+            <div className="h-full flex-1 flex flex-col items-center justify-center p-6 bg-background">
+              <div className="max-w-md w-full flex flex-col items-center text-center animate-pulse">
+                <div className="w-12 h-12 rounded-2xl bg-surface-raised mb-6" />
+                <div className="h-7 w-56 bg-surface-raised rounded-lg mb-3" />
+                <div className="h-4 w-72 bg-surface-raised rounded mb-8" />
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  <div className="h-20 bg-surface-raised/50 rounded-2xl" />
+                  <div className="h-20 bg-surface-raised/50 rounded-2xl" />
+                  <div className="h-20 bg-surface-raised/50 rounded-2xl" />
+                  <div className="h-20 bg-surface-raised/50 rounded-2xl" />
+                </div>
+              </div>
             </div>
           </div>
         ) : currentView === 'landing' || !authUser ? (

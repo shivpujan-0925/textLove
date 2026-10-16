@@ -343,7 +343,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center justify-between text-[10px] text-foreground-muted/80 pt-1.5 border-t border-border/40">
+        <div className="flex items-center justify-between text-[11px] text-foreground-muted pt-1.5 border-t border-border/40">
           <span>&copy; {new Date().getFullYear()} textLove</span>
           <button
             type="button"
