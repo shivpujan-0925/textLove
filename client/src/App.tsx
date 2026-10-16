@@ -12,6 +12,7 @@ import { ChatArea } from './components/layout/ChatArea';
 import { EmptyChatState } from './components/layout/EmptyChatState';
 import { SettingsModal } from './components/layout/SettingsModal';
 import { LandingPage } from './components/landing/LandingPage';
+import { BrandLogo } from './components/ui/BrandLogo';
 import {
   GoogleAccountChooserModal,
   GoogleAccountChoice,
@@ -28,7 +29,7 @@ const INITIAL_MESSAGES: EphemeralMessage[] = [];
 
 const MainContent: React.FC = () => {
   const { toast } = useToast();
-  const { user: authUser, csrfToken, loginWithGoogle, loginWithGoogleAccount } = useAuth();
+  const { user: authUser, csrfToken, isLoading: isAuthLoading, loginWithGoogle, loginWithGoogleAccount } = useAuth();
   const { isOnline, isInstallable, isUpdateAvailable, installPwa, applyUpdate } = usePwa();
   const {
     sendEncryptedMessage,
@@ -475,8 +476,15 @@ const MainContent: React.FC = () => {
         </aside>
       )}
 
-      <div className="flex-1 overflow-hidden relative min-h-0">
-        {currentView === 'landing' || !authUser ? (
+      <main id="main-content" role="main" className="flex-1 overflow-hidden relative min-h-0">
+        {isAuthLoading ? (
+          <div className="h-full flex items-center justify-center bg-background" aria-label="Loading session">
+            <div className="flex flex-col items-center gap-3 select-none">
+              <BrandLogo size="lg" />
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          </div>
+        ) : currentView === 'landing' || !authUser ? (
           <div className="h-full overflow-y-auto">
             <LandingPage
               onEnterChat={() => {
@@ -525,7 +533,7 @@ const MainContent: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      </main>
 
       <SettingsModal
         isOpen={isSettingsOpen}

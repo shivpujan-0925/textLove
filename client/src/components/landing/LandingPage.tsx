@@ -201,7 +201,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <div className="text-center border-t border-border/40 pt-4 text-[11px] text-foreground-muted/80">
+          <div className="text-center border-t border-border/40 pt-4 text-[11px] text-foreground-muted">
             <span>
               End-to-end client encrypted. Zero server message databases. Authoritative 30-minute memory auto-expiry.
             </span>

@@ -77,7 +77,7 @@ describe('textLove Client Application', () => {
     setupMockAuth();
     render(<App />);
 
-    const googleBtn = screen.getByRole('button', { name: /Sign in with Google/i });
+    const googleBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
     fireEvent.click(googleBtn);
 
     expect(await screen.findByText(/Choose an account to continue to/i)).toBeInTheDocument();
@@ -87,10 +87,11 @@ describe('textLove Client Application', () => {
     expect(await screen.findByText(/Signed in as Bob Martinez/i)).toBeInTheDocument();
   };
 
-  it('renders textLove branding and hero text on landing page without unauthenticated explore feature', () => {
+  it('renders textLove branding and hero text on landing page without unauthenticated explore feature', async () => {
+    setupMockAuth();
     render(<App />);
-    expect(screen.getByRole('button', { name: /textLove Home/i })).toBeInTheDocument();
-    expect(screen.getByText(/Live conversations that leave/i)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /textLove Home/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Live conversations that leave/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Sign in with Google/i })).toBeInTheDocument();
     // Critical assertion: Unauthenticated "Explore Chat Layout" must be removed
     expect(screen.queryByText(/Explore Chat Layout/i)).not.toBeInTheDocument();
@@ -156,7 +157,7 @@ describe('textLove Client Application', () => {
     render(<App />);
 
     // Click "Sign in with Google"
-    const googleBtn = screen.getByRole('button', { name: /Sign in with Google/i });
+    const googleBtn = await screen.findByRole('button', { name: /Sign in with Google/i });
     fireEvent.click(googleBtn);
 
     // Verify account chooser modal opens

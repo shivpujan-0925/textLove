@@ -7,7 +7,7 @@
     /* Light Mode: Crisp Porcelain with high-contrast slate typography */
     --background: 210 40% 98%;
     --foreground: 222 47% 11%;
-    --foreground-muted: 215 16% 40%;
+    --foreground-muted: 215 20% 35%;
     --surface: 0 0% 100%;
     --surface-raised: 210 30% 95%;
     --border: 214 28% 88%;
@@ -26,7 +26,7 @@
     /* Dark Mode: Deep Midnight Obsidian with soft glow highlights */
     --background: 224 71% 4%;
     --foreground: 210 40% 98%;
-    --foreground-muted: 215 20% 65%;
+    --foreground-muted: 215 20% 70%;
     --surface: 224 45% 8%;
     --surface-raised: 224 40% 12%;
     --border: 224 25% 18%;
